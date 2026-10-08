@@ -29,7 +29,7 @@
 | [2](#phase-2) | targets-manager (تعديل الخدمات من الداشبورد) | `[x]` |
 | [3](#phase-3) | Grafana: Provisioning + الـ 6 لوحات | `[x]` |
 | [4](#phase-4) | قواعد التنبيه + Telegram | `[~]` |
-| [5](#phase-5) | سكربتات التثبيت + README بالعربي | `[ ]` |
+| [5](#phase-5) | سكربتات التثبيت + README بالعربي | `[x]` |
 | [6](#phase-6) | الاختبارات الشاملة | `[ ]` |
 | [7](#phase-7) | تحسينات مستقبلية (اختياري) | `[ ]` |
 
@@ -214,18 +214,26 @@
 <a id="phase-5"></a>
 ## Phase 5 — سكربتات التثبيت + التوثيق
 
-- [ ] `install.sh`:
-  - [ ] التحقق من root + التوزيعة Ubuntu/Debian
-  - [ ] تثبيت Docker + Compose plugin لو مش موجودين
-  - [ ] توليد `.env` (باسورد Grafana عشوائي 32 حرف + توكن targets-manager + جمع token/chat id تيليجرام من المستخدم)
-  - [ ] تثبيت Node Exporter native كـ systemd service
-  - [ ] `docker compose up -d`
-  - [ ] `docker compose restart grafana` (لتثبيت Business Forms plugin في أول تشغيل)
-  - [ ] طباعة ملخص الوصول خطوة بخطوة (SSH Tunnel + الروابط)
-- [ ] `uninstall.sh` — إيقاف الحاويات وإزالتها، وخيار `--purge` لحذف الداتا كاملة
-- [ ] `README.md` بالعربي — التشغيل اليدوي · التثبيت الأول · الوصول الآمن للوحة · دليل استكشاف المشاكل السريع
+- [x] `install.sh` (idempotent — تقدر تشغّله أكتر من مرة):
+  - [x] التحقق من root + التوزيعة Ubuntu/Debian
+  - [x] تثبيت Docker + Compose plugin لو مش موجودين (get.docker.com)
+  - [x] تفعيل journald persistent (مطلوب لـ Promtail)
+  - [x] توليد `.env` (باسورد Grafana 32 hex + توكن targets-manager 48 hex + سؤال تيليجرام) بصلاحيات 600
+  - [x] تجهيز مجلدات الداتا + `chown` للمستخدمين الصحيحين (grafana 472 · loki 10001 · prometheus/alertmanager 65534 · targets-manager 1000)
+  - [x] تثبيت Node Exporter native (v1.8.2، amd64/arm64/armv7) كـ systemd service مع `--collector.systemd`
+  - [x] `docker compose up -d`
+  - [x] `docker compose restart grafana` (لتثبيت Business Forms plugin في أول تشغيل)
+  - [x] طباعة ملخص الوصول (SSH Tunnel + الروابط + بيانات الدخول)
+- [x] `uninstall.sh` — `docker compose down --remove-orphans`، وخيار `--purge` (تأكيد `yes`) لحذف `data/` + Node Exporter + `.env`
+- [x] `README.md` بالعربي — نظرة عامة · المعمارية · التثبيت · SSH Tunnel · اللوحات · خريطة المشكلة · إدارة الخدمات · Telegram · الصيانة · إلغاء التثبيت · استكشاف الأخطاء · الأمان
+- [x] تحديث `.env.example` (إضافة `GF_INSTALL_PLUGINS` · `GRAFANA_PUBLIC_URL` · `GRAFANA_BIND`)
 
 **📝 Notes:**
+- **تحقق `bash -n`:** السكربتان (install/uninstall) مرّا فحص الـ syntax في كونتينر `bash:5.2` ✅ (كمان بيتأكد إن الـ line-endings LF مش CRLF).
+- **Node Exporter يشغّل كـ root** (مش مستخدم مخصص) لأن `--collector.systemd` محتاج وصول لـ dbus — الأبسط والأكثر موثوقية على سيرفر واحد.
+- **حدود الاختبار هنا:** `install.sh` فيه خطوات محتاجة Linux + systemd (تثبيت Node Exporter + journald) — الاختبار الكامل بيتم على الـ VPS الفعلي (Phase 6). الأجزاء القابلة للاختبار (توليد `.env` + `docker compose config/up`) اتحققت فعلاً في المراحل السابقة.
+- **توليد الباسووردات** بـ `openssl rand -hex` (متوفر افتراضياً على Ubuntu/Debian).
+- **تحذير أمني مطبوع** في نهاية التثبيت لتذكير المستخدم إن المنافذ localhost-only.
 <!-- ملاحظات الفيز -->
 
 ---
