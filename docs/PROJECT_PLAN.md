@@ -30,8 +30,8 @@
 | [3](#phase-3) | Grafana: Provisioning + الـ 6 لوحات | `[x]` |
 | [4](#phase-4) | قواعد التنبيه + Telegram | `[~]` |
 | [5](#phase-5) | سكربتات التثبيت + README بالعربي | `[x]` |
-| [6](#phase-6) | الاختبارات الشاملة | `[ ]` |
-| [7](#phase-7) | تحسينات مستقبلية (اختياري) | `[ ]` |
+| [6](#phase-6) | الاختبارات الشاملة | `[~]` |
+| [7](#phase-7) | تحسينات مستقبلية (اختياري) | `[~]` |
 
 ---
 
@@ -241,15 +241,22 @@
 <a id="phase-6"></a>
 ## Phase 6 — الاختبارات الشاملة
 
-- [ ] `docker compose ps` → كل الخدمات Up وhealthy
-- [ ] فحص endpoints: `9100/metrics` (Node) · `9090/-/ready` (Prometheus) · `9115` (Blackbox)
-- [ ] تنبيه `ServerDown` تجريبي يوصل فعلياً على Telegram
-- [ ] إضافة/حذف خدمة من: (1) صفحة الإدارة (2) الفورم جوه Grafana — والاختيار التلقائي شغال
-- [ ] محاكاة مشكلة: دسك يقوم يتملى (ملفات مؤقتة) والتنبيه يوصل
-- [ ] `promtool check rules` + `amtool check-config` على كل ملفات التكوين
-- [ ] فحص retention لو Loki: عمل لوجات تجريبية والانتظار للتأكد من الحذف
+- [x] `docker compose ps` → الخدمات الأساسية Up (محلياً: prometheus · alertmanager · loki · grafana · blackbox · targets-manager healthy)
+- [x] فحص endpoints: `9090/-/ready` (Prometheus) · `9115` (Blackbox) · `8081/api/health` (targets-manager) — كلها ردّت صح
+- [x] `promtool check config` + `check rules` (18 قاعدة) + `amtool check-config` — كلها نجحت
+- [x] إضافة/حذف خدمة عبر API → ظهرت في Prometheus (`up`) وحُذفت (E2E كامل)
+- [ ] إضافة/حذف من **الفورم جوه Grafana** — يحتاج تأكيد يدوي من المتصفح (schema نسخة 6 للـ Business Forms) → انظر Notes
+- [ ] تنبيه حقيقي يوصل على **Telegram** (يحتاج توكن حقيقي — pipeline مُثبت بـ 401 مع توكن وهمي)
+- [ ] محاكاة مشكلة Disk full + وصول التنبيه (يُنفَّذ على VPS)
+- [ ] فحص retention لو Loki بعد مرور المدة (يُنفَّذ على VPS)
+
+**🗺️ التحقق الكامل على الـ VPS:** موجود في `docs/DEPLOYMENT.md` → قسم "قائمة تحقق التسليم" (خطوات جاهزة للنسخ واللصق).
 
 **📝 Notes:**
+- **🐞 باگ حقيقي اتكشف واتصلح أثناء الاختبار الشامل:** الـ plugin id كان مكتوب غلط `volkovlabs-forms-panel` (بـ s) في `docker-compose.yml` + `.env.example` + `install.sh` → Grafana كان بيطلع `404: Plugin not found` ويعمل restart loop. الصحيح `volkovlabs-form-panel`. اتصلح في الأربع مواضع (+ الخطة) واتأكدنا إن `v6.3.5` بيتحمّل ويسجّل بنجاح ✅.
+- **🐞 إصلاح تاني:** Alertmanager كان **بيقع** لو المستخدم ساب تيليجرام فاضي (chat_id فاضي = config غير صالح). الحل: fallback في الـ compose (`${TELEGRAM_CHAT_ID:-1}` و `${TELEGRAM_BOT_TOKEN:-disabled}`) → Alertmanager بيشتغل عادي حتى بدون تيليجرام. اتحقق: الإقلاع نجح مع `.env` فاضي ✅.
+- **متغيرات اختبار محلية:** غيّرت `GRAFANA_PORT` لـ 3005 أثناء الاختبار لأن المنفذ 3000 كان محجوز على جهاز الاختبار (ثم رجّعته 3000). المنفذ مش محجوز على السيرفر.
+- **التحقق المحلي اتم على Docker Desktop (Windows)** — الفروقات على السيرفر: systemd + journald + cadvisor (كلها محلولة في install.sh). الحاويات cadvisor/promtail اتخطّيت في الاختبار المحلي (بتعتمد على ميزات Linux).
 <!-- ملاحظات الفيز -->
 
 ---
@@ -257,12 +264,15 @@
 <a id="phase-7"></a>
 ## Phase 7 — تحسينات مستقبلية (اختياري)
 
-- [ ] الترقية من Promtail → Grafana Alloy (بديل حديث أخف)
-- [ ] UFW rules بيفعلها الـ install.sh
-- [ ] لوحة إضافية: DNS monitoring
-- [ ] تخزين تاريخ التنبيهات كامل (PostgreSQL)
+- [x] **UFW rules بيفعلها install.sh** — تحصين تلقائي: `9100` مسموح من شبكات Docker فقط + تذكير أمني لو UFW مش مفعّل
+- [x] **`docs/DEPLOYMENT.md`** — دليل النشر النهائي على الـ VPS (خطوات + قائمة تحقق للنسخ)
+- [ ] الترقية من Promtail → Grafana Alloy (تحسين مستقبلي — مؤجّل)
+- [ ] لوحة إضافية: DNS monitoring (مؤجّل)
+- [ ] تخزين تاريخ التنبيهات كامل (PostgreSQL) (مؤجّل)
 
 **📝 Notes:**
+- **باقي تحسينات Phase 7 "مؤجّلة"** عن قصد — مش ضرورية للتشغيل الأساسي وبتزود تعقيد. الـ Promtail لوحده كفاية، والـ alert history موجود في Alertmanager + Logs.
+- **Node Exporter مكشوف على 9100** لازم يبقى متاح لشبكات Docker (172.16.0.0/12) عشان Prometheus يوصله — عشان كده التحصين بيسمح لشبكة Docker فقط.
 <!-- ملاحظات الفيز -->
 
 ---
@@ -277,7 +287,7 @@
 | **B** | كتابة `file_sd` atomic + validation + backup (آخر 10 نسخ) | لو JSON اتبوظ أو بسبب ملف حجم كبير/مكرر، متمسكش نظام Prometheus كله |
 | **C** | **Node Exporter native على الهوست** مش كونتينر | الـ systemd collector والإحصائيات الدقيقة للقرص/الشبكة مش بيظهروا صح من جوه كونتينر |
 | **D** | Loki retention حقيقية 14 يوم عن طريق compactor | يمنع اللوجات من ملء القرص (مشكلة قبل ما تبدأ) |
-| **E** | Grafana plugin موقّع رسمياً (volkovlabs-forms-panel) عن طريق `GF_INSTALL_PLUGINS` | مش محتاج allow unsigned plugins = أمان واستقرار أكتر |
+| **E** | Grafana plugin موقّع رسمياً (volkovlabs-form-panel) عن طريق `GF_INSTALL_PLUGINS` | مش محتاج allow unsigned plugins = أمان واستقرار أكتر |
 | **F** | Validation صارم في targets-manager (URL صحيح + module معروف + غير مكرر) | منع إدخال خدمة تبقى يوم الربط مش بتتنفذ عن تلف كل اللوحات |
 | **G** | repeat_interval معقول + grouping | منع سبام تيليجرام لما يحصل storm من التنبيهات |
 | **H** | TZ=`Africa/Cairo` افتراضياً | اتساق timestamps ورسائل Telegram مع المستخدم |
@@ -309,7 +319,8 @@ nasaq-monitoring/
 ├── uninstall.sh
 ├── README.md
 ├── docs/
-│   └── PROJECT_PLAN.md
+│   ├── PROJECT_PLAN.md
+│   └── DEPLOYMENT.md
 ├── prometheus/
 │   ├── prometheus.yml
 │   ├── targets/services.json
