@@ -1,0 +1,189 @@
+{
+  "uid": "nasaq-services",
+  "title": "05 · الخدمات والمواقع",
+  "description": "حالة كل خدمة/موقع + زمن الاستجابة + شهادات SSL + إدارة الخدمات من داخل اللوحة",
+  "tags": ["nasaq", "blackbox", "uptime"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "خدمات شغّالة",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "count(probe_success{job=\"blackbox-services\"} == 1) or vector(0)", "instant": true } ],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "خدمات واقعة",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "count(probe_success{job=\"blackbox-services\"} == 0) or vector(0)", "instant": true } ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] },
+          "color": { "mode": "background" }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "متوسط زمن الاستجابة",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "avg(probe_duration_seconds{job=\"blackbox-services\"})", "instant": true } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 } ] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "أقرب شهادة SSL للانتهاء (أيام)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "(min(probe_ssl_earliest_cert_expiry{job=\"blackbox-services\"}) - time()) / 86400", "instant": true } ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "decimals": 1,
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "yellow", "value": 14 }, { "color": "green", "value": 30 } ] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "الحالة (1 = شغّال · 0 = واقع)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "probe_success{job=\"blackbox-services\"}", "legendFormat": "{{service}}" } ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0, "max": 1,
+          "mappings": [ { "type": "value", "options": { "0": { "text": "واقع", "color": "red", "index": 0 }, "1": { "text": "شغّال", "color": "green", "index": 1 } } } ],
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "always", "pointSize": 6, "spanNulls": false }
+        },
+        "overrides": []
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "زمن الاستجابة (ثانية)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "expr": "probe_duration_seconds{job=\"blackbox-services\"}", "legendFormat": "{{service}}" } ],
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "📋 تفاصيل الخدمات",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "probe_success{job=\"blackbox-services\"}", "instant": true, "format": "table" },
+        { "refId": "B", "expr": "probe_duration_seconds{job=\"blackbox-services\"}", "instant": true, "format": "table" },
+        { "refId": "C", "expr": "probe_http_status_code{job=\"blackbox-services\"}", "instant": true, "format": "table" },
+        { "refId": "D", "expr": "probe_ssl_earliest_cert_expiry{job=\"blackbox-services\"}", "instant": true, "format": "table" }
+      ],
+      "transformations": [
+        { "id": "joinByField", "options": { "byField": "instance", "mode": "outer" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "__name__": true, "__name__ 1": true, "__name__ 2": true, "__name__ 3": true, "job": true, "job 1": true, "job 2": true, "job 3": true, "instance": true, "instance 1": true, "instance 2": true, "instance 3": true, "type": true, "type 1": true, "type 2": true, "type 3": true, "module": true, "module 1": true, "module 2": true, "module 3": true }, "renameByName": { "service": "الخدمة", "Value": "الحالة", "Value #B": "زمن الاستجابة", "Value #C": "HTTP", "Value #D": "انتهاء SSL" } } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "الحالة", "desc": false } ] } }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "الحالة" }, "properties": [ { "id": "custom.displayMode", "value": "color-background" }, { "id": "mappings", "value": [ { "type": "value", "options": { "0": { "text": "واقع", "color": "red", "index": 0 }, "1": { "text": "شغّال", "color": "green", "index": 1 } } } ] } ] },
+          { "matcher": { "id": "byName", "options": "زمن الاستجابة" }, "properties": [ { "id": "unit", "value": "s" }, { "id": "decimals", "value": 3 } ] },
+          { "matcher": { "id": "byName", "options": "انتهاء SSL" }, "properties": [ { "id": "unit", "value": "dateTimeFromNow" } ] }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" }
+    },
+    {
+      "id": 8,
+      "type": "text",
+      "title": "🛠️ إدارة الخدمات",
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 21 },
+      "options": {
+        "mode": "html",
+        "content": "<div style='font-family:Segoe UI,sans-serif;color:#e6edf3'>\n<h3 style='margin:0 0 8px'>لوحة إدارة الخدمات الكاملة</h3>\n<p style='color:#8b949e;margin:0 0 12px'>إضافة / تعطيل / حذف الخدمات بجدول كامل</p>\n<a href='http://localhost:8081/' target='_blank' style='display:inline-block;background:#3b82f6;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600'>فتح صفحة الإدارة ←</a>\n<p style='color:#8b949e;font-size:12px;margin-top:12px'>ملاحظة: يلزم أن يكون المنفذ 8081 مُمرّراً من نفس نفق SSH</p>\n</div>"
+      }
+    },
+    {
+      "id": 9,
+      "type": "volkovlabs-form-panel",
+      "title": "➕ إضافة خدمة (من داخل اللوحة)",
+      "gridPos": { "h": 5, "w": 16, "x": 8, "y": 21 },
+      "pluginVersion": "6.3.5",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [ { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" } } ],
+      "options": {
+        "sync": false,
+        "updateEnabled": "manual",
+        "buttonGroup": { "orientation": "left", "size": "md" },
+        "layout": { "orientation": "horizontal", "padding": 10, "sectionVariant": "default", "variant": "single" },
+        "submit": { "icon": "cloud-upload", "text": "إضافة", "variant": "primary" },
+        "reset": { "icon": "process", "text": "تفريغ", "variant": "secondary" },
+        "saveDefault": { "icon": "save", "text": "حفظ", "variant": "hidden" },
+        "confirmModal": {
+          "body": "تأكيد إضافة الخدمة؟", "cancel": "إلغاء", "confirm": "تأكيد", "title": "تأكيد",
+          "columns": { "include": ["name", "newValue"], "name": "الحقل", "newValue": "القيمة", "oldValue": "السابق" },
+          "elementDisplayMode": "all"
+        },
+        "elements": [
+          { "id": "service", "title": "اسم الخدمة", "type": "string", "value": "", "section": "", "uid": "e-service", "labelWidth": 12, "tooltip": "حروف إنجليزية/أرقام فقط", "unit": "" },
+          { "id": "target", "title": "العنوان", "type": "string", "value": "", "section": "", "uid": "e-target", "labelWidth": 10, "tooltip": "https://... أو host:port أو IP", "unit": "" },
+          { "id": "module", "title": "نوع الفحص", "type": "select", "value": "http_2xx", "section": "", "uid": "e-module", "labelWidth": 10, "tooltip": "", "unit": "string", "options": [ { "label": "http_2xx", "value": "http_2xx" }, { "label": "http_2xx_ssl", "value": "http_2xx_ssl" }, { "label": "tcp_connect", "value": "tcp_connect" }, { "label": "icmp", "value": "icmp" } ] }
+        ],
+        "initial": {
+          "method": "-",
+          "contentType": "application/json",
+          "getPayload": "return {}",
+          "payload": {},
+          "highlight": false
+        },
+        "update": {
+          "method": "POST",
+          "url": "http://localhost:8081/api/targets",
+          "headers": [
+            { "id": "h1", "name": "Authorization", "value": "Bearer CHANGE_ME_TARGETS_MANAGER_TOKEN", "config": {} },
+            { "id": "h2", "name": "Content-Type", "value": "application/json", "config": {} }
+          ],
+          "contentType": "application/json",
+          "getPayload": "const payload = {}; context.panel.elements.forEach((e) => { payload[e.id] = e.value; }); return payload;",
+          "payload": {},
+          "payloadMode": "all",
+          "confirm": true,
+          "code": "if (context.panel.response && context.panel.response.ok) { context.grafana.notifySuccess(['تمت الإضافة', 'ستظهر الخدمة في بروميتاِس خلال 30 ثانية']); } else { context.grafana.notifyError(['خطأ', 'فشل إضافة الخدمة - تحقق من التوكن والعنوان']); }"
+        }
+      }
+    }
+  ]
+}

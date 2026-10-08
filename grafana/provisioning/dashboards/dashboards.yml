@@ -1,0 +1,19 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — Grafana dashboard provider
+#  اللوحات تُحمَّل من الملفات المحلية (grafana/dashboards/*.json)
+#  أي تعديل من الواجهة يُحفظ persistent في volume الـ Grafana.
+# ════════════════════════════════════════════════════════════════
+apiVersion: 1
+
+providers:
+  - name: nasaq
+    orgId: 1
+    folder: nasaq-monitoring
+    folderUid: nasaq
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

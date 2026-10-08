@@ -1,0 +1,63 @@
+{
+  "uid": "nasaq-logs",
+  "title": "06 · اللوجات",
+  "description": "بحث وفلترة لوجات النظام والدوكر — لتحديد سبب أي عطل بدقة",
+  "tags": ["nasaq", "logs", "loki"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "معدّل اللوجات (عدد/ثانية)",
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate({host=\"vps\"}[5m]))", "legendFormat": "كل اللوجات" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 12, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 2,
+      "type": "logs",
+      "title": "🔴 الأخطاء والتحذيرات فقط",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 6 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "expr": "{host=\"vps\"} |~ \"(?i)(error|fail|critical|panic|exception|refused|timeout)\"", "legendFormat": "" }
+      ],
+      "options": {
+        "showTime": true, "showLabels": true, "wrapLogMessage": true, "prettifyLogMessage": false,
+        "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending"
+      }
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "🖥️ لوجات النظام (systemd journal)",
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "expr": "{job=\"journal\"}", "legendFormat": "" }
+      ],
+      "options": { "showTime": true, "showLabels": true, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" }
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "🐳 لوجات الحاويات (docker)",
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        { "refId": "A", "expr": "{job=\"docker\"}", "legendFormat": "" }
+      ],
+      "options": { "showTime": true, "showLabels": true, "wrapLogMessage": true, "enableLogDetails": true, "dedupStrategy": "none", "sortOrder": "Descending" }
+    }
+  ]
+}

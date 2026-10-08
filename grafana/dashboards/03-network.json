@@ -1,0 +1,92 @@
+{
+  "uid": "nasaq-network",
+  "title": "03 · الشبكة",
+  "description": "الترافيك، الأخطاء، والدروبس لكل كارت شبكة",
+  "tags": ["nasaq", "network"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "device",
+        "label": "كارت الشبكة",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(node_network_receive_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|docker.*|br-.*|virbr.*\"}, device)",
+        "includeAll": true,
+        "multi": true,
+        "refresh": 1,
+        "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "الترافيك الداخل (Receive)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "rate(node_network_receive_bytes_total{job=\"node-exporter\",device=~\"$device\"}[5m])", "legendFormat": "{{device}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "الترافيك الخارج (Transmit)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "rate(node_network_transmit_bytes_total{job=\"node-exporter\",device=~\"$device\"}[5m])", "legendFormat": "{{device}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "Bps", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "أخطاء الاستقبال (Errors)",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "rate(node_network_receive_errs_total{job=\"node-exporter\",device=~\"$device\"}[5m])", "legendFormat": "استقبال {{device}}" },
+        { "refId": "B", "expr": "rate(node_network_transmit_errs_total{job=\"node-exporter\",device=~\"$device\"}[5m])", "legendFormat": "إرسال {{device}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "الدروبس (Drops)",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "rate(node_network_receive_drop_total{job=\"node-exporter\",device=~\"$device\"}[5m])", "legendFormat": "استقبال {{device}}" },
+        { "refId": "B", "expr": "rate(node_network_transmit_drop_total{job=\"node-exporter\",device=~\"$device\"}[5m])", "legendFormat": "إرسال {{device}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "اتصالات TCP الحالية",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "node_netstat_Tcp_CurrEstab{job=\"node-exporter\"}", "instant": true }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    }
+  ]
+}

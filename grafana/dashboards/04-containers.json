@@ -1,0 +1,119 @@
+{
+  "uid": "nasaq-containers",
+  "title": "04 · الحاويات (Containers)",
+  "description": "استهلاك وحالة كل حاوية Docker — لتحديد الحاوية المسببة للمشكلة",
+  "tags": ["nasaq", "docker"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "عدد الحاويات الشغّالة",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "count(count by(name)(container_last_seen{name!=\"\",image!=\"\"}) )", "instant": true }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "إجمالي استهلاك CPU للحاويات %",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(rate(container_cpu_usage_seconds_total{name!=\"\",image!=\"\"}[5m])) * 100", "instant": true }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "color": { "mode": "fixed", "fixedColor": "orange" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "إجمالي استهلاك RAM للحاويات",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(container_memory_working_set_bytes{name!=\"\",image!=\"\"})", "instant": true }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "color": { "mode": "fixed", "fixedColor": "purple" } }, "overrides": [] },
+      "options": { "colorMode": "value", "graphMode": "area", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "حاويات أُعيد تشغيلها (آخر ساعة)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum(changes(container_start_time_seconds{name!=\"\"}[1h])) or vector(0)", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] },
+          "color": { "mode": "background" }
+        },
+        "overrides": []
+      },
+      "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "استهلاك CPU لكل حاوية",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by(name) (rate(container_cpu_usage_seconds_total{name!=\"\",image!=\"\"}[5m])) * 100", "legendFormat": "{{name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "showPoints": "never", "stacking": { "mode": "normal" } } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "استهلاك الذاكرة لكل حاوية",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by(name) (container_memory_working_set_bytes{name!=\"\",image!=\"\"})", "legendFormat": "{{name}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes", "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 8, "showPoints": "never" } }, "overrides": [] },
+      "options": { "legend": { "displayMode": "list", "placement": "right", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "جدول الحاويات",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "expr": "sum by(name) (rate(container_cpu_usage_seconds_total{name!=\"\",image!=\"\"}[5m])) * 100", "instant": true, "format": "table", "legendFormat": "CPU %" },
+        { "refId": "B", "expr": "sum by(name) (container_memory_working_set_bytes{name!=\"\",image!=\"\"})", "instant": true, "format": "table", "legendFormat": "RAM" },
+        { "refId": "C", "expr": "changes(container_start_time_seconds{name!=\"\"}[1h])", "instant": true, "format": "table", "legendFormat": "إعادات التشغيل" }
+      ],
+      "transformations": [
+        { "id": "joinByField", "options": { "byField": "name", "mode": "outer" } },
+        { "id": "organize", "options": { "excludeByName": { "Time": true, "Time 1": true, "Time 2": true, "Time 3": true, "__name__": true, "__name__ 1": true, "__name__ 2": true, "__name__ 3": true }, "renameByName": { "name": "الحاوية", "Value #A": "CPU %", "Value #B": "RAM", "Value #C": "إعادات التشغيل" } } },
+        { "id": "sortBy", "options": { "sort": [ { "field": "CPU %", "desc": true } ] } }
+      ],
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "right" } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "RAM" }, "properties": [ { "id": "unit", "value": "bytes" } ] },
+          { "matcher": { "id": "byName", "options": "CPU %" }, "properties": [ { "id": "unit", "value": "percent" } ] }
+        ]
+      },
+      "options": { "showHeader": true, "cellHeight": "sm" }
+    }
+  ]
+}

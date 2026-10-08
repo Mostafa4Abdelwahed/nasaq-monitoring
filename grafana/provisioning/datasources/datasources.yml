@@ -1,0 +1,34 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — Grafana datasources
+#  Prometheus (المقاييس) + Loki (اللوجات) مع ربط تلقائي بينهم
+# ════════════════════════════════════════════════════════════════
+apiVersion: 1
+
+datasources:
+  # ───────────── Prometheus ─────────────
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+      httpMethod: POST
+
+  # ───────────── Loki ─────────────
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+      # حقول مشتقة: لو الاستعلام فيه container_id يستخرج container
+      derivedFields:
+        - name: container
+          matcherRegex: "container_id=\"?(\\w{12})"
+          url: ""
+        - name: level
+          matcherRegex: "level=(\\w+)"
+          url: ""
