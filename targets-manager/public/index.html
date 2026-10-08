@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nasaq — إدارة الخدمات المراقَبة</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #3b82f6;
+    --ok: #2ea043; --warn: #d29922; --err: #f85149;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; font-family: "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--text); font-size: 14px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+  }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+  label { font-size: 12px; color: var(--muted); }
+  input, select {
+    background: #0d1117; border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 13px;
+  }
+  input:focus, select:focus { outline: 1px solid var(--accent); }
+  button {
+    background: var(--accent); color: #fff; border: none; border-radius: 6px;
+    padding: 8px 16px; cursor: pointer; font-family: inherit; font-size: 13px;
+  }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+  button.danger { background: var(--err); }
+  button.warn { background: var(--warn); }
+  button:active { transform: scale(.98); }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: right; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  td { font-size: 13px; }
+  code { color: #79c0ff; direction: ltr; unicode-bidi: embed; }
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600;
+  }
+  .on  { background: rgba(46,160,67,.15); color: var(--ok); }
+  .off { background: rgba(210,153,34,.15); color: var(--warn); }
+  .msg { margin-top: 12px; padding: 10px 14px; border-radius: 8px; display: none; font-size: 13px; }
+  .msg.ok   { display: block; background: rgba(46,160,67,.15); color: var(--ok); }
+  .msg.err  { display: block; background: rgba(248,81,73,.15); color: var(--err); }
+  .muted { color: var(--muted); }
+  .empty { text-align: center; color: var(--muted); padding: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🖥️ nasaq-monitoring — إدارة الخدمات المراقَبة</h1>
+  <div class="sub">كل تعديل هنا يلتقِته Prometheus تلقائياً خلال 30 ثانية — بدون restart</div>
+
+  <div class="card">
+    <div class="row">
+      <div class="field" style="flex:2">
+        <label>توكن الإدارة (TARGETS_MANAGER_TOKEN)</label>
+        <input type="password" id="token" placeholder="لصق التوكن هنا" autocomplete="off">
+      </div>
+      <button id="save-token">حفظ التوصين</button>
+      <span class="muted" id="token-state"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;margin:0 0 12px">➕ إضافة خدمة جديدة</h2>
+    <div class="row">
+      <div class="field">
+        <label>اسم الخدمة (إنجليزي)</label>
+        <input id="f-service" placeholder="مثال: nasaq-site">
+      </div>
+      <div class="field" style="flex:2">
+        <label>العنوان</label>
+        <input id="f-target" placeholder="https://example.com أو host.example.com:3306 أو 8.8.8.8">
+      </div>
+      <div class="field">
+        <label>نوع الفحص</label>
+        <select id="f-module"></select>
+      </div>
+      <div class="field">
+        <label>التصنيف (اختياري)</label>
+        <input id="f-type" placeholder="website / database">
+      </div>
+      <button id="add-btn">إضافة</button>
+    </div>
+    <div id="add-msg" class="msg"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="font-size:15px;margin:0 0 8px">📋 الخدمات الحالية</h2>
+    <div id="list-wrap"><div class="empty">جاري التحميل…</div></div>
+    <div id="list-msg" class="msg"></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const apiUrl = location.origin + "/api";
+
+// ── التوكن محفوظ محلياً ──
+$("token").value = localStorage.getItem("nasaq_token") || "";
+$("token-state").textContent = $("token").value ? "" : "(لن تعمل عمليات الكتابة إلا بعد إدخال التوكن)";
+$("save-token").onclick = () => {
+  localStorage.setItem("nasaq_token", $("token").value.trim());
+  $("token-state").textContent = "تم الحفظ ✓";
+  renderList();
+};
+
+const authHeaders = () => ({
+  "content-type": "application/json",
+  Authorization: "Bearer " + localStorage.getItem("nasaq_token"),
+});
+
+function flash(el, ok, text) {
+  el.className = "msg " + (ok ? "ok" : "err");
+  el.textContent = text;
+  setTimeout(() => (el.className = "msg"), 6000);
+}
+
+// ── قائمة الـ modules من الخادم ──
+async function loadModules() {
+  const r = await fetch(apiUrl + "/modules");
+  const j = await r.json();
+  $("f-module").innerHTML = j.modules
+    .map((m) => `<option value="${m}">${m}</option>`)
+    .join("");
+}
+
+// ── قائمة الخدمات ──
+async function renderList() {
+  const wrap = $("list-wrap");
+  try {
+    const r = await fetch(apiUrl + "/targets");
+    const j = await r.json();
+    if (!j.targets.length) {
+      wrap.innerHTML = '<div class="empty">لا توجد خدمات بعد — أضف أول خدمة من الفورم أعلاه.</div>';
+      return;
+    }
+    wrap.innerHTML = `<table>
+      <thead><tr><th>الاسم</th><th>العنوان</th><th>الفحص</th><th>الحالة</th><th>أُضيفت</th><th>إجراءات</th></tr></thead>
+      <tbody>` +
+      j.targets.map((t) =>
+        `<tr>
+          <td>${t.service}</td>
+          <td><code>${t.target}</code></td>
+          <td>${t.module}</td>
+          <td><span class="badge ${t.enabled ? "on" : "off"}">${t.enabled ? "مفعّلة" : "معطّلة"}</span></td>
+          <td class="muted">${(t.created_at || "").slice(0, 10)}</td>
+          <td>
+            <button class="${t.enabled ? "warn" : "ghost"}" onclick="toggle('${t.id}', ${!t.enabled})">
+              ${t.enabled ? "تعطيل" : "تفعيل"}
+            </button>
+            <button class="danger" onclick="del('${t.id}', '${t.service}')">حذف</button>
+          </td>
+        </tr>`
+      ).join("") +
+      `</tbody></table>`;
+  } catch (e) {
+    wrap.innerHTML = '<div class="empty">تعذر الاتصال بالخدمة</div>';
+  }
+}
+
+async function add() {
+  const svc = $("f-service").value.trim();
+  const tgt = $("f-target").value.trim();
+  const mod = $("f-module").value;
+  const typ = $("f-type").value.trim();
+  const r = await fetch(apiUrl + "/targets", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ target: tgt, service: svc, module: mod, type: typ || "website" }),
+  });
+  const j = await r.json();
+  flash($("add-msg"), r.ok, r.ok ? `تمت الإضافة ✓ (id: ${j.id}) — تظهر في بروميتاِس خلال 30 ثانية` : "خطأ: " + j.error);
+  if (r.ok) { $("f-service").value = ""; $("f-target").value = ""; $("f-type").value = ""; renderList(); }
+}
+$("add-btn").onclick = add;
+["f-target", "f-service"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") add(); }));
+
+async function toggle(id, enabled) {
+  const r = await fetch(apiUrl + "/targets/" + id, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ enabled }),
+  });
+  const j = await r.json();
+  flash($("list-msg"), r.ok, r.ok ? "تم التحديث ✓" : "خطأ: " + j.error);
+  renderList();
+}
+
+async function del(id, name) {
+  if (!confirm(`تأكيد حذف «${name}» نهائياً؟`)) return;
+  const r = await fetch(apiUrl + "/targets/" + id, { method: "DELETE", headers: authHeaders() });
+  const j = await r.json();
+  flash($("list-msg"), r.ok, r.ok ? "تم الحذف ✓" : "خطأ: " + j.error);
+  renderList();
+}
+
+loadModules().then(renderList);
+</script>
+</body>
+</html>

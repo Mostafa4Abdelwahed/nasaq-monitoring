@@ -56,6 +56,8 @@ services:
     image: prom/prometheus:v3.2.1
     container_name: nasaq-prometheus
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"   # للمراجعة/debug فقط
     extra_hosts:
       # للوصول إلى Node Exporter native على الهوست (9100)
       - host.docker.internal:host-gateway
@@ -76,6 +78,8 @@ services:
     image: prom/alertmanager:v0.28.1
     container_name: nasaq-alertmanager
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"   # للمراجعة/debug فقط
     entrypoint: ["/bin/sh", "-c"]
     # أمكانية إضافة البيانات من الـ env: ملف الـ yml فيه placeholders
     # (توكن تيليجرام + chat id) يتم حقنها هنا قبل التشغيل
@@ -155,22 +159,35 @@ services:
       - monitoring
 
   # ════════════════════════════════════════════════════════════════
-  #  targets-manager — يُفعَّل في Phase 2 (بعد بناء الـ Dockerfile)
+  #  targets-manager — إدارة الخدمات من الداشبورد (Phase 2)
+  #  source of truth: data/targets-state/state.json
+  #  الملف المولَّد لبروميتاِس: prometheus/targets/services.json
   # ════════════════════════════════════════════════════════════════
-  # targets-manager:
-  #   build: ./targets-manager
-  #   container_name: nasaq-targets-manager
-  #   restart: unless-stopped
-  #   ports:
-  #     - "${TARGETS_BIND:-127.0.0.1}:${TARGETS_MANAGER_PORT:-8081}:8080"
-  #   environment:
-  #     TZ: ${TZ:-Africa/Cairo}
-  #     TARGETS_MANAGER_TOKEN: ${TARGETS_MANAGER_TOKEN:?مطلوب من .env}
-  #   volumes:
-  #     - ./prometheus/targets:/data/targets
-  #   logging: *default-logging
-  #   networks:
-  #     - monitoring
-  #
+  targets-manager:
+    build: ./targets-manager
+    image: nasaq/targets-manager:local
+    container_name: nasaq-targets-manager
+    restart: unless-stopped
+    ports:
+      - "${TARGETS_BIND:-127.0.0.1}:${TARGETS_MANAGER_PORT:-8081}:8080"
+    environment:
+      TZ: ${TZ:-Africa/Cairo}
+      TARGETS_MANAGER_TOKEN: ${TARGETS_MANAGER_TOKEN:?مطلوب من .env}
+      TARGETS_DIR: /data/targets
+      STATE_DIR: /data/state
+      BLACKBOX_FILE: /etc/blackbox/blackbox.yml
+    volumes:
+      - ./prometheus/targets:/data/targets
+      - ${DATA_DIR:-./data}/targets-state:/data/state
+      - ./blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
+    networks:
+      - monitoring
+
   # ملاحظة: Node Exporter مش كونتينر هنا — native على الهوست
   # (Phase 5 install.sh) — Prometheus بيلاقيه على host.docker.internal:9100

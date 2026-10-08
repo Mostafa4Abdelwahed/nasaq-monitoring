@@ -20,6 +20,7 @@ grafana/data/
 # ─── نسخ targets-manager الاحتياطية (بتتولد وقت التشغيل) ───
 prometheus/targets/*.bak*
 prometheus/targets/backup-*
+prometheus/targets/backups/
 
 # ─── نظام التشغيل / محرر الأكواد ───
 .DS_Store
