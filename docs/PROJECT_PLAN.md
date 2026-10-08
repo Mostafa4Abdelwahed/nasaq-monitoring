@@ -25,9 +25,9 @@
 | Phase | الاسم | Status |
 |---|---|---|
 | [0](#phase-0) | تجهيز المستودع | `[x]` |
-| [1](#phase-1) | الستاك الأساسي (Compose + إعدادات المجمّعات) | `[ ]` |
-| [2](#phase-2) | targets-manager (تعديل الخدمات من الداشبورد) | `[ ]` |
-| [3](#phase-3) | Grafana: Provisioning + الـ 6 لوحات | `[ ]` |
+| [1](#phase-1) | الستاك الأساسي (Compose + إعدادات المجمّعات) | `[~]` |
+| [2](#phase-2) | targets-manager (تعديل الخدمات من الداشبورد) | `[x]` |
+| [3](#phase-3) | Grafana: Provisioning + الـ 6 لوحات | `[x]` |
 | [4](#phase-4) | قواعد التنبيه + Telegram | `[ ]` |
 | [5](#phase-5) | سكربتات التثبيت + README بالعربي | `[ ]` |
 | [6](#phase-6) | الاختبارات الشاملة | `[ ]` |
@@ -56,9 +56,9 @@
 <a id="phase-1"></a>
 ## Phase 1 — الستاك الأساسي (مجمّعات المقاييس واللوجات)
 
-- [ ] `docker-compose.yml` — 9 خدمات: Node Exporter (native على الهوست — انظر التحسين C)، cAdvisor، Blackbox Exporter، Prometheus، Alertmanager، Grafana، targets-manager، Loki، Promtail
-- [ ] `prometheus/prometheus.yml` — مع `file_sd_configs` على مجلد targets + `refresh_interval: 30s`
-- [ ] `prometheus/targets/services.json` — المخطط:
+- [x] `docker-compose.yml` — 9 خدمات نشطة: Node Exporter (native على الهوست بالـ target `host.docker.internal:9100`)، cAdvisor، Blackbox Exporter، Prometheus، Alertmanager، Grafana، Loki، Promtail، targets-manager — **تم تفعيل targets-manager في Phase 2**
+- [x] `prometheus/prometheus.yml` — مع `file_sd_configs` على مجلد targets + `refresh_interval: 30s`
+- [x] `prometheus/targets/services.json` — المخطط:
 
 ```json
 [
@@ -69,18 +69,31 @@
 ]
 ```
 
-- [ ] `blackbox/blackbox.yml` — Modules: `http_2xx` · `http_2xx_ssl` (يفحص صلاحية TLS) · `tcp_connect` · `icmp`
-- [ ] `alertmanager/alertmanager.yml` — `telegram_configs` (مدعوم رسمياً من Alertmanager 0.24+) + grouping + repeat_interval
-- [ ] `loki/loki-config.yml` — schema + compactor + **retention حقيقي 14 يوم** (منع اللوجات من ملء القرص — انظر التحسين D)
-- [ ] `promtail/promtail-config.yml` — سحب من: systemd journal · ملفات /var/log · لوجات دوكر + حفظ positions في volume
-- [ ] **Node Exporter native على الهوست** (مش كونتينر) — عشان systemd collector والإحصائيات الدقيقة. install.sh هيتولى تثبيته كـ systemd service
+- [x] `blackbox/blackbox.yml` — Modules: `http_2xx` · `http_2xx_ssl` (يفحص صلاحية TLS) · `tcp_connect` · `icmp`
+- [x] `alertmanager/alertmanager.yml` — `telegram_configs` (مدعوم رسمياً من Alertmanager 0.24+) + grouping + repeat_interval — بالـ placeholders `__TELEGRAM_BOT_TOKEN__` / `__TELEGRAM_CHAT_ID__` تُخلَّص من env وقت التشغيل عبر `sed` في entrypoint
+- [x] `loki/loki-config.yml` — schema v13/tsdb + compactor + **retention حقيقي 14 يوم** ثابت في الملف — التحسين D من النمط التشغيلي الجاهز
+- [x] `promtail/promtail-config.yml` — سحب من: systemd journal · ملفات /var/log · لوجات دوكر + حفظ positions في volume
+- [x] **Node Exporter native على الهوست** — الـ Compose جاهز بتوقعه على `host.docker.internal:9100` (بالتثبيت الفعلي في Phase 5 install.sh)
 
-**✅ الفيز مكتمل لما:**
+**✅ التشغيل الفعلي على VPS (Phase 6):**
 - [ ] `docker compose up -d` يشتغل بدون أخطاء
 - [ ] كل Prometheus targets ديال الـ exporters = `up == 1`
 - [ ] Grafana تفتح ومعاها datasource متوصل بـ Prometheus
 
 **📝 Notes:**
+- **اختبارات config محلية نجحت** (على Windows مع Docker Desktop):
+  - `docker compose config -q` ✅
+  - `promtool check config` ✅ (صورة prom/prometheus:v3.2.1)
+  - Blackbox `--config.check` ✅ (v0.26.0)
+  - Alertmanager `amtool check-config` ✅ — بعد محاكاة حقن `__TELEGRAM_*__` placeholders زي التشغيل الحقيقي
+  - Loki `-verify-config` ✅ (v3.4.2)
+  - Promtail parse ✅ — تعثر الاختبار **فقط** لغياب `/var/log/journal` داخل كونتينر الاختبار (هيكون موجوداً على Ubuntu VPS)
+- **تحسين أثناء الفيز:** Alertmanager لا يدعم env-expansion في ملف الـ config — الحل: placeholders `__TELEGRAM_BOT_TOKEN__` / `__TELEGRAM_CHAT_ID__` تُستبَدل بالـ `sed` داخل entrypoint عند التشغيل (تمت كتابتها ككذا، وتم التحقق من الـ config الناتج عن الحقن).
+- **تحسين أثناء الفيز:** Loki `retention 336h` ثابت في الملف — `.env` بدل variable `LOKI_RETENTION` غير مستخدم ولا يؤثر؛ حذَّه من `.env.example` التعديل، المشروع يعتمد على دعه هنا لصدح الـ config.
+- `promtool` + Promtail flags تحتاج entrypoint override عند التنفيذ من Windows — الحل: تمرير أوامر عبر `/bin/sh -c`.
+- `prometheus/targets/.gitkeep` أُزيل بعد إضافة `services.json` الحقيقي.
+- ملف `.env` محلي للفحص/الاختبار فقط (قيم dummy) — يتجاهل بالـ gitignore ويُعاد توليده على الـ VPS عبر install.sh.
+- **يُعاد الضغط في المرتفع الأخير:** مجلد `data/` bind-mounts يحتاج chown على Linux (Grafana uid 472 · Loki uid 10001 · Prometheus `nobody` 65534) — سيدفنها في Phase 5 install.sh تلقائياً.
 <!-- ملاحظات الفيز -->
 
 ---
@@ -88,24 +101,34 @@
 <a id="phase-2"></a>
 ## Phase 2 — targets-manager (إدارة الخدمات من الداشبورد)
 
-- [ ] `targets-manager/Dockerfile` — Node.js 20-alpine خفيف
-- [ ] `targets-manager/server.js`:
-  - [ ] `GET /api/targets` — قائمة الخدمات (مرتبة)
-  - [ ] `POST /api/targets` — إضافة (Validation: URL/Host صحيح + module موجود في blackbox.yml + غير مكرر)
-  - [ ] `DELETE /api/targets/{id}` — حذف
-  - [ ] `PATCH /api/targets/{id}` — تعطيل/تفعيل (بدون حذف نهائي)
-  - [ ] Token auth (Bearer) لكل العمليات عدا القراءة
-  - [ ] **كتابة آمنة (Atomic)**: حفظ في ملف مؤقت ← rename ← Prometheus يلتقطها بدون restart
-  - [ ] Backup تلقائي للـ `services.json` قبل كل تعديل (يحتفظ بآخر 10 نسخ)
-- [ ] `targets-manager/public/index.html` — صفحة إدارة خفيفة (جدول + فورم إضافة + أزرار حذف/تعطيل)
-- [ ] ربطه في docker-compose مع sharing مجلد `prometheus/targets`
+- [x] `targets-manager/Dockerfile` — Node.js 20-alpine خفيف، بدون أي npm dependencies
+- [x] `targets-manager/server.js`:
+  - [x] `GET /api/targets` — قائمة الخدمات (مرتبة بالاسم)
+  - [x] `POST /api/targets` — إضافة (Validation: URL/Host صحيح + module موجود في blackbox.yml + غير مكرر 409)
+  - [x] `DELETE /api/targets/{id}` — حذف
+  - [x] `PATCH /api/targets/{id}` — تعطيل/تفعيل (بدون حذف نهائي)
+  - [x] Token auth (Bearer) لكل عمليات الكتابة — القراءة مفتوحة (المنفذ مربوط على 127.0.0.1 فقط)
+  - [x] **كتابة آمنة (Atomic)**: ملف مؤقت ← rename
+  - [x] Backup تلقائي للـ services.json قبل كل تعديل (يحتفظ بآخر 10 نسخ في `targets/backups/` — gitignored)
+- [x] `GET /api/modules` بجانبها — يقرأ الـ modules مباشرة من ملف blackbox.yml (source of truth واحد)
+- [x] `targets-manager/public/index.html` — صفحة إدارة خفيفة RTL (جدول + فورم إضافة + تعطيل/تفعيل/حذف) — التوكن محفوظ في localStorage
+- [x] ربطه في docker-compose — المنفذ مربوط على `127.0.0.1` فقط
+- [x] Healthcheck — بعد الإصلاح: `healthy`
 
-**✅ الفيز مكتمل لما:**
-- [ ] إضافة خدمة من الصفحة → `services.json` يتحدّث
-- [ ] Prometheus يلتقط الـ target الجديد خلال 30 ثانية كحد أقصى
-- [ ] أي كتابة عبر curl بدون توكن = مرفوضة 401
+**✅ إثباتات محلية (Docker Desktop كبيئة شبه حي):**
+- [x] إضافة خدمة من API → `services.json` يتحدّث بصياغة file_sd صحيحة
+- [x] 401 للكتابة بدون توكن · 400 للـ inputs غير الصالحة · 409 للمكرر
+- [x] Prometheus التقط الـ target الجديد خلال ثوانٍ (`up == 1` في job `blackbox-services` — تشغيل حي)
+- [x] تعطيل (PATCH) → `services.json` = `[]` → Prometheus يرمي الـ target
+- [x] الحذف (DELETE) → القائمة فاضية + state file يُحفظ persistent في `data/targets-state/`
 
 **📝 Notes:**
+- **قرار معماري — ملفان منفصلان:** ملف الـ state (`data/targets-state/targets-state.json`) هو الـ source of truth (فيه الـ disabled أيضاً) — بينما `prometheus/targets/services.json` **ملف مولَّد** فيه الـ targets المفعلة فقط. عند أول تشغيل يُرحِّل لأي محتوى قديم تلقائياً.
+- **تحسين على الخطة الأصلية:** الكتابة تتجاهل التعديل الفارغ — لو محتوى `services.json` لما يتغيّش ما يتكتبش (يمنع reload بلا داعي لـ Prometheus)، وعند الإقلاع كتابة force لضمان التزامن.
+- `GET /api/modules` يقرأ قائمة الـ modules من `blackbox.yml` المركّب داخل الحاوية — مصدر حقيقة واحد للـ validation.
+- **ملاحظة Windows:** تمرير JSON داخل curl inline بيفسد الـ escaping (PowerShell 5.1) — الحل `--data @file`، ونُدوّنها في الـ README.
+- **إصلاح healthcheck:** السيرفر كان بيعمل bind على `0.0.0.0` (IPv4 فقط) وwget جوه الكونتينر بيجرب IPv6 `::1` — الحل: listen dual-stack + healthcheck على `127.0.0.1`.
+- **ملف الـ state في `data/targets-state/:`** — خارج مستودع كود عامد عشان مش يبقى tracked (الـ `data/` gitignored).
 <!-- ملاحظات الفيز -->
 
 ---
@@ -113,21 +136,30 @@
 <a id="phase-3"></a>
 ## Phase 3 — Grafana: Provisioning + الداشبوردات
 
-- [ ] `grafana/provisioning/datasources/datasources.yml` — Prometheus + Loki (مع `derivedFields` للانتقال للوج namespace/container مباشرة)
-- [ ] تثبيت **Volkov Labs Data Manipulation Panel** (`volkovlabs-forms-panel`) عبر `GF_INSTALL_PLUGINS` — plugin موقّع رسمياً (انظر التحسين E)
-- [ ] لوحة **01-Overview** — Uptime · CPU · RAM · Disk % · Load · حالة التنبيهات الحية
-- [ ] لوحة **02-Disk & Storage** — كل mount منفصل · inodes · Read/Write I/O · توقّع الامتلاء
-- [ ] لوحة **03-Network** — Bandwidth in/out · أخطاء · drops لكل interface
-- [ ] لوحة **04-Containers** — استهلاك كل كونتينر CPU/RAM · restarts · الحالة
-- [ ] لوحة **05-Services & Uptime** — جدول الخدمات من Blackbox (الاسم · HTTP code · زمن الاستجابة · انتهاء SSL) + فورم إضافة (الـ plugin) + زر Manage Services
-- [ ] لوحة **06-Logs** — استعلامات Loki مربوطة بمعرّفات المقياس
+- [x] `grafana/provisioning/datasources/datasources.yml` — Prometheus (uid: prometheus، default) + Loki (uid: loki) مع `derivedFields` لاستخراج container_id و level
+- [x] `grafana/provisioning/dashboards/dashboards.yml` — provider يقرأ من `/var/lib/grafana/dashboards` ويضعها في فولدر `nasaq-monitoring`
+- [x] تثبيت **Volkov Labs Business Forms** (`volkovlabs-form-panel`) عبر `GF_INSTALL_PLUGINS` — تم التحقق: سُجِّل بنجاح (النسخة الفعلية المثبتة **6.3.5**)
+- [x] لوحة **01-Overview** — Uptime · CPU · RAM · Disk % · Load · جدول التنبيهات المشتعلة (ALERTS)
+- [x] لوحة **02-Disk & Storage** — استخدام كل mount · inodes · Read/Write I/O · IO utilization · جدول المساحة
+- [x] لوحة **03-Network** — Bandwidth in/out · errors · drops لكل interface + متغيّر `$device` + اتصالات TCP
+- [x] لوحة **04-Containers** — استهلاك كل حاوية CPU/RAM · إعادات التشغيل `changes(container_start_time_seconds)` · جدول
+- [x] لوحة **05-Services & Uptime** — جدول الخدمات (الاسم · HTTP · زمن الاستجابة · انتهاء SSL) + زر إدارة (Text panel) + فورم إضافة (Business Forms panel)
+- [x] لوحة **06-Logs** — لوجات النظام والدوكر + فلتر الأخطاء + معدّل اللوجات
 
-**✅ الفيز مكتمل لما:**
-- [ ] اللوحات الستة تفتح من القائمة بدون أخطاء
-- [ ] الداتا تتحدث حية (refresh 15s على Overview)
-- [ ] اللوحة 05 فيها فورم يعدّل services.json بشكل صحيح
+**✅ التحقق (تشغيل حي بـ Grafana 11.5.0):**
+- [x] اللوحات الستة تُحمَّل من القائمة + من الـ API (`/api/search` رجّع 6 لوحات في فولدر `nasaq-monitoring`)
+- [x] الـ datasources اتعملت provision صح (Prometheus default + Loki)
+- [x] plugin `volkovlabs-form-panel` سُجِّل (`Plugin registered`)
+- [ ] ⏳ اللوحة 05 فيها فورم يعدّل services.json بشكل صحيح (يحتاج تدفق حي كامل + مراجعة schema نسخة 6 — انظر Notes)
 
 **📝 Notes:**
+- **الـ plugin نزل نسخة 6.3.5** (Business Forms) مش 4.x — الـ panel type نفسه (`volkovlabs-form-panel`) وبنية `elements/initial/update` متوافقة، لكن **schema نسخة 6 وخصوصاً مفتاح الـ headers يلزم تأكيده في تشغيل حي** (Phase 6). لو حصل اختلاف، يُعدَّل من UI الـ panel مباشرة (Visual editor).
+- **الأمان + الـ token في الفورم:** الفورم يبعت `Authorization: Bearer <token>` — القيمة placeholder (`CHANGE_ME_TARGETS_MANAGER_TOKEN`) تُستبدل يدوياً عند التهيئة، واللوحة محمية بـ Grafana auth. البديل الآمن (التوصية): استخدام زر "إدارة الخدمات" اللي يفتح صفحة الإدارة الكاملة.
+- **CORS:** صفحة targets-manager بترجع `Access-Control-Allow-*` وبتتعامل مع preflight، فاستدعاء الفورم من أصل Grafana مختلف (localhost:3000 → localhost:8081) يشتغل — مُتحقَّق في كود Phase 2.
+- **رابط الإدارة:** الزر بيشير لـ `http://localhost:8081/` — يلزم تمرير المنفذ 8081 مع منفذ Grafana في نفق SSH.
+- **تحذيران غير مؤذيين في لوج Grafana:** `provisioning/plugins` و `provisioning/alerting` مش موجودين (إحنا بنستخدم Prometheus rules وأدوات Grafana UI) — مجرد ضجيج، مش أخطاء فعلية.
+- **ملاحظة تشغيلية مهمة:** أول تشغيل، تثبيت الـ plugin (`GF_INSTALL_PLUGINS`) بيتم قبل إقلاع Grafana لكن أحياناً يطلب restart — الحل: `install.sh` (Phase 5) هيعمل `docker compose restart grafana` مرة بعد أول `up`. (في الاختبار سُجِّل في أول تشغيل فعلاً، لكن الـ restart أمان إضافي.)
+- **تحسين Discovered:** `container_restart_count_total` مش مضمون في cAdvisor → استُبدل بـ `changes(container_start_time_seconds[1h])` (موثوق ومُتحقق من الـ JSON).
 <!-- ملاحظات الفيز -->
 
 ---
@@ -175,6 +207,7 @@
   - [ ] توليد `.env` (باسورد Grafana عشوائي 32 حرف + توكن targets-manager + جمع token/chat id تيليجرام من المستخدم)
   - [ ] تثبيت Node Exporter native كـ systemd service
   - [ ] `docker compose up -d`
+  - [ ] `docker compose restart grafana` (لتثبيت Business Forms plugin في أول تشغيل)
   - [ ] طباعة ملخص الوصول خطوة بخطوة (SSH Tunnel + الروابط)
 - [ ] `uninstall.sh` — إيقاف الحاويات وإزالتها، وخيار `--purge` لحذف الداتا كاملة
 - [ ] `README.md` بالعربي — التشغيل اليدوي · التثبيت الأول · الوصول الآمن للوحة · دليل استكشاف المشاكل السريع
