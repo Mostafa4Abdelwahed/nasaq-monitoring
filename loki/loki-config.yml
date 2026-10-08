@@ -1,0 +1,58 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — Loki config
+#  التخزين محلي (filesystem) مع retention محدد — 14 يوم
+#  (منع اللوجات من ملء القرص — التحسين D في الخطة)
+# ════════════════════════════════════════════════════════════════
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: "2024-01-01"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# ───────── Retention الحقيقي ─────────
+limits_config:
+  retention_period: 336h   # = 14 يوم
+  reject_old_samples: true
+  reject_old_samples_max_age: 24h
+
+compactor:
+  working_directory: /loki/compactor
+  retention_enabled: true
+  delete_request_store: filesystem
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-tmp
+
+# ════════════════════════════════════════════════════════════════
+#  ملاحظات:
+#  1. retention_period = 336h = 14 يوم — ثابت في الملف (تغييره يتطلب تعديل هنا فقط).
+#  2. compactor دعى اللوجات القديمة تُحذف فعلياً من القرص.
+#  3. schema v13 + tsdb = التخزين الحديث وأداء أفضل.
+# ════════════════════════════════════════════════════════════════

@@ -1,0 +1,56 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — Alertmanager config
+#  ⚠️ الملف ده فيه placeholders: __TELEGRAM_BOT_TOKEN__ و __TELEGRAM_CHAT_ID__
+#     بيتم حقن القيم تلقائي من .env وقت التشغيل في docker-compose.
+#     مفيش حاجة تكتب هنا يدوياً.
+# ════════════════════════════════════════════════════════════════
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: telegram-default
+  # تجميع التنبيهات المتفرعة من نفس الخدمة في رسالة واحدة
+  group_by:
+    - alertname
+    - service
+    - instance
+  group_wait: 30s
+  group_interval: 5m
+  # إعادة التنبيه كل 4 ساعات لو فضل موجود (مبرد سبام)
+  repeat_interval: 4h
+  routes:
+    # ── الأخطاء الحُرمة تتكرر بشكل أسرع ──
+    - matchers:
+        - severity = "critical"
+      receiver: telegram-default
+      repeat_interval: 1h
+      continue: false
+
+receivers:
+  - name: telegram-default
+    telegram_configs:
+      - bot_token: "__TELEGRAM_BOT_TOKEN__"
+        chat_id: __TELEGRAM_CHAT_ID__
+        api_url: https://api.telegram.org
+        send_resolved: true
+        parse_mode: ""
+        message: >-
+          {{ range .Alerts }}
+          🔴 [{{ .Status | toUpper }}] {{ .Annotations.summary }}
+
+          {{ .Annotations.description }}
+          🖥️ Service: {{ .Labels.service }} · Instance: {{ .Labels.instance }}
+          Severity: {{ .Labels.severity }}
+          {{ if .Annotations.dashboard_url }}📊 Dashboard: {{ .Annotations.dashboard_url }}{{ end }}
+          ⏱️ Since: {{ .StartsAt }}{{ if .Annotations.raw_metrics }}
+          Metrics: {{ .Annotations.raw_metrics }}{{ end }}
+
+          {{ end }}
+# ════════════════════════════════════════════════════════════════
+#  ملاحظات:
+#  1. parse_mode فاضي (بدون HTML) — يمنع مشاكل الرموز العربية داخل الـ summary.
+#  2. `send_resolved: true` = تُرسَّل رسالة عند حل التنبيه (معرفة أن المشكلة انتهت).
+#  3. تنبيهات "critical" تُتكرر كل ساعة بدل 4 ساعات.
+#  4. التجميع معقول (group_by + group_wait) — يمنع سبام تيليجرام عند عاصفة تنبيهات.
+# ════════════════════════════════════════════════════════════════

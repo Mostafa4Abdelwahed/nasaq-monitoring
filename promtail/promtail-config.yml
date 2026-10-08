@@ -1,0 +1,68 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — Promtail config
+#  سحب اللوجات من: systemd journal · /var/log · دوكر containers
+#  positions تُحفظ persistently — التقدم القراءة في كل ملف أُستُنادي.
+# ════════════════════════════════════════════════════════════════
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /positions/positions.yml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # ───────── 1) systemd journal (سجلات النظامية) ─────────
+  - job_name: host-journal
+    journal:
+      path: /var/log/journal
+      max_age: 24h
+      labels:
+        job: journal
+        host: vps
+    relabel_configs:
+      # اسم الوحدة وعديد المقياس (nginx.service → لأسهل فلتهر بالوحدة)
+      - source_labels: ["__journal__systemd_unit"]
+        target_label: "unit"
+      - source_labels: ["__journal__hostname"]
+        target_label: "hostname"
+      - source_labels: ["__journal_priority_keyword"]
+        target_label: "level"
+
+  # ───────── 2) ملفات /var/log السّية (syslog · auth ...) ─────────
+  - job_name: host-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          host: vps
+          __path__: /var/log/*.log
+
+  # ───────── 3) لوجات دوكر (كل الكونتينرات) ─────────
+  - job_name: docker-containers
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          host: vps
+          __path__: /var/lib/docker/containers/*/*-json.log
+    pipeline_stages:
+      # تحليل سلوك دوكر skeleton — تحويل (log + timestamp واضح)
+      - docker: {}
+      # استخراج level ضدي موحّد من السطر
+      - regex:
+          expression: "(?i)(ERROR|WARN|INFO|DEBUG)"
+      - labels:
+          level:
+
+# ════════════════════════════════════════════════════════════════
+#  ملاحظات:
+#  1. __path__ يدعم الـ glob — /var/log/*.log يجمع كل ملفات .log.
+#  2. positions file = تتبّع آخر قراءة في كل ملف — عند restart يكمل من نفس المكان.
+#  3. تحسين مستقبلي (Phase 7): labels لكل حاوية (container name) لتسهيل الفلترة.
+# ════════════════════════════════════════════════════════════════

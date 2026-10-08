@@ -1,0 +1,47 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — Blackbox Exporter modules
+#  الـ module يناسبه يُحدَّد لكل خدمة في services.json
+#  عبر الـ label: module
+# ════════════════════════════════════════════════════════════════
+
+modules:
+  # ───────── HTTP إجمالي (بدون تحقق TLS إجباري) ─────────
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      valid_http_versions:
+        - HTTP/1.1
+        - HTTP/2.0
+      valid_status_codes: []
+      follow_redirects: true
+      fail_if_not_ssl: false
+
+  # ───────── HTTP + فحص صلاحية شهادة SSL ─────────
+  http_2xx_ssl:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      valid_http_versions:
+        - HTTP/1.1
+        - HTTP/2.0
+      valid_status_codes: []
+      follow_redirects: true
+      tls_config:
+        insecure_skip_verify: false
+
+  # ───────── فحص TCP port (مثل 22 SSH أو 3306 MySQL) ─────────
+  tcp_connect:
+    prober: tcp
+    timeout: 10s
+    tcp:
+      preferred_ip_protocol: ip4
+
+  # ───────── فحص Ping ─────────
+  icmp:
+    prober: icmp
+    timeout: 10s
+    icmp:
+      preferred_ip_protocol: ip4

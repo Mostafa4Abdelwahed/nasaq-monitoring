@@ -1,0 +1,176 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — Starter stack
+#  جميع المتغيرات تُقرأ من .env (انسخه من .env.example)
+# ════════════════════════════════════════════════════════════════
+name: nasaq-monitoring
+
+networks:
+  monitoring:
+    name: nasaq-net
+    driver: bridge
+
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ───────────────────────── مقاييس الحاويات ─────────────────────────
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: nasaq-cadvisor
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    environment:
+      TZ: ${TZ:-Africa/Cairo}
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  # ───────────────────────── فحص الخدمات/المواقع ─────────────────────
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.26.0
+    container_name: nasaq-blackbox
+    restart: unless-stopped
+    cap_add:
+      - NET_RAW   # لفحص ICMP
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  # ───────────────────────── Prometheus (تخزين + قواعد) ───────────────
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: nasaq-prometheus
+    restart: unless-stopped
+    extra_hosts:
+      # للوصول إلى Node Exporter native على الهوست (9100)
+      - host.docker.internal:host-gateway
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.enable-lifecycle
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - ${DATA_DIR:-./data}/prometheus:/prometheus
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  # ───────────────────────── Alertmanager → Telegram ─────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: nasaq-alertmanager
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    # أمكانية إضافة البيانات من الـ env: ملف الـ yml فيه placeholders
+    # (توكن تيليجرام + chat id) يتم حقنها هنا قبل التشغيل
+    command:
+      - >-
+        sed
+        -e "s|__TELEGRAM_BOT_TOKEN__|$$TELEGRAM_BOT_TOKEN|g"
+        -e "s|__TELEGRAM_CHAT_ID__|$$TELEGRAM_CHAT_ID|g"
+        /etc/alertmanager/alertmanager.yml > /alertmanager/alertmanager-live.yml
+        && exec /bin/alertmanager
+        --config.file=/alertmanager/alertmanager-live.yml
+        --storage.path=/alertmanager
+    environment:
+      TZ: ${TZ:-Africa/Cairo}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - ${DATA_DIR:-./data}/alertmanager:/alertmanager
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  # ───────────────────────── Grafana (اللوحة) ─────────────────────────
+  grafana:
+    image: grafana/grafana:11.5.0
+    container_name: nasaq-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_BIND:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"
+    environment:
+      TZ: ${TZ:-Africa/Cairo}
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?مطلوب من .env}
+      GF_INSTALL_PLUGINS: ${GF_INSTALL_PLUGINS:-volkovlabs-forms-panel}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_SERVER_ROOT_URL: ${GRAFANA_PUBLIC_URL:-http://localhost:3000}
+    volumes:
+      - ${DATA_DIR:-./data}/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  # ───────────────────────── Loki (تخزين اللوجات) ─────────────────────
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: nasaq-loki
+    restart: unless-stopped
+    user: "10001:10001"
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - ${DATA_DIR:-./data}/loki:/loki
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  # ───────────────────────── Promtail (سحب اللوجات) ───────────────────
+  promtail:
+    image: grafana/promtail:3.4.2
+    container_name: nasaq-promtail
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - ${DATA_DIR:-./data}/promtail-positions:/positions
+      - /var/log:/var/log:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    logging: *default-logging
+    networks:
+      - monitoring
+
+  # ════════════════════════════════════════════════════════════════
+  #  targets-manager — يُفعَّل في Phase 2 (بعد بناء الـ Dockerfile)
+  # ════════════════════════════════════════════════════════════════
+  # targets-manager:
+  #   build: ./targets-manager
+  #   container_name: nasaq-targets-manager
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${TARGETS_BIND:-127.0.0.1}:${TARGETS_MANAGER_PORT:-8081}:8080"
+  #   environment:
+  #     TZ: ${TZ:-Africa/Cairo}
+  #     TARGETS_MANAGER_TOKEN: ${TARGETS_MANAGER_TOKEN:?مطلوب من .env}
+  #   volumes:
+  #     - ./prometheus/targets:/data/targets
+  #   logging: *default-logging
+  #   networks:
+  #     - monitoring
+  #
+  # ملاحظة: Node Exporter مش كونتينر هنا — native على الهوست
+  # (Phase 5 install.sh) — Prometheus بيلاقيه على host.docker.internal:9100
