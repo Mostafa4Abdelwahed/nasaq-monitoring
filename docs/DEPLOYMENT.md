@@ -160,7 +160,7 @@ tar czf nasaq-backup-$(date +%F).tar.gz .env prometheus/targets/services.json da
 |---|---|
 | `install.sh` فشل في تثبيت Docker | تأكد من اتصال الإنترنت + أعد التشغيل |
 | Grafana "Restarting" | شوف `docker compose logs grafana` — غالباً صلاحيات: `sudo bash install.sh` تاني |
-| Alertmanager واقع | تيليجرام فاضي؟ النظام لازم يشتغل عادي (fetch fallback)؛ لو لسه: `docker compose logs alertmanager` |
+| Alertmanager واقع | لو تيليجرام فاضي، النظام المفروض يشتغل عادي (فيه fallback)؛ لو لسه واقع: `docker compose logs alertmanager` |
 | مفيش لوجات في Loki | تأكد `/var/log/journal` موجود + `docker compose logs promtail` |
 | خدماتي مش بتظهر | `curl http://localhost:8081/api/targets` + تأكد Prometheus حملها خلال 30 ث |
 
