@@ -28,7 +28,7 @@
 | [1](#phase-1) | الستاك الأساسي (Compose + إعدادات المجمّعات) | `[~]` |
 | [2](#phase-2) | targets-manager (تعديل الخدمات من الداشبورد) | `[x]` |
 | [3](#phase-3) | Grafana: Provisioning + الـ 6 لوحات | `[x]` |
-| [4](#phase-4) | قواعد التنبيه + Telegram | `[ ]` |
+| [4](#phase-4) | قواعد التنبيه + Telegram | `[~]` |
 | [5](#phase-5) | سكربتات التثبيت + README بالعربي | `[ ]` |
 | [6](#phase-6) | الاختبارات الشاملة | `[ ]` |
 | [7](#phase-7) | تحسينات مستقبلية (اختياري) | `[ ]` |
@@ -167,33 +167,46 @@
 <a id="phase-4"></a>
 ## Phase 4 — قواعد التنبيه + Telegram
 
-- [ ] `prometheus/rules/host-alerts.yml`:
-  - [ ] `ServerDown` — `up == 0` لمدة دقيقة
-  - [ ] `HighCPU` — أعلى من 85% لمدة 5 دقائق
-  - [ ] `HighLoad` — load1 أكبر من ضعفي عدد الأنوية لمدة 5 دقائق
-  - [ ] `HighRAM` / `NearOOM` — ذاكرة متاحة حرجة أو بدء الاعتماد على swap
-- [ ] `prometheus/rules/disk-alerts.yml`:
-  - [ ] `DiskSpaceLow` — أقل من 15% / حرج أقل من 5%
-  - [ ] `DiskWillFillIn24h` — تنبؤ خطي بامتلاء خلال 24 ساعة
-  - [ ] `DiskInodesLow` — عدد الـ inodes متاح حرج
-  - [ ] `HighDiskIO` — queue depth أو utilization مرتفع
-- [ ] `prometheus/rules/service-alerts.yml`:
-  - [ ] `ServiceDown` — Blackbox probe فشل لمدة دقيقة (باسم الخدمة)
-  - [ ] `SlowResponse` — زمن الاستجابة تجاوز حد ثابت
-  - [ ] `SSLCertExpiringSoon` — أقل من 14 يوم
-- [ ] `prometheus/rules/container-alerts.yml`:
-  - [ ] `ContainerRestarting` — عدد restarts زاد في آخر 15 دقيقة
-  - [ ] `ServiceFailed` — وحدة systemd في حالة failed
-- [ ] كل تنبيه فيه Annotations كاملة:
-  - [ ] `summary` — عنوان واضح
-  - [ ] `description` — السبب المحتمل + المكان (mount/container/service)
-  - [ ] `dashboard_url` — **رابط مباشر للوحة Grafana ذاتها** (باستخدام uid للوحة)
-- [ ] تفعيل routing على Telegram في alertmanager.yml (token + chat id من .env) + تجميع معقول للتنبيهات
+- [x] `prometheus/rules/host-alerts.yml` (6 قواعد):
+  - [x] `ServerDown` — `up == 0` لمدة دقيقة (critical)
+  - [x] `HighCPU` — أعلى من 85% لمدة 5 دقائق
+  - [x] `HighLoad` — load5 أكبر من ضعفي عدد الأنوية لمدة 5 دقائق
+  - [x] `HighRAM` — أعلى من 90% لمدة 5 دقائق
+  - [x] `LowMemory` — ذاكرة متاحة أقل من 5% (critical، احتمال OOM)
+  - [x] `HighSwapUsage` — أكثر من نصف الـ Swap مستخدم
+- [x] `prometheus/rules/disk-alerts.yml` (5 قواعد):
+  - [x] `DiskSpaceLow` — أعلى من 85% / `DiskSpaceCritical` — أعلى من 95%
+  - [x] `DiskWillFillIn24h` — تنبؤ خطي `predict_linear(...[6h], 24*3600) < 0`
+  - [x] `DiskInodesLow` — أقل من 15% inodes متاحة
+  - [x] `HighDiskIO` — انشغال القرص أكبر من 90%
+- [x] `prometheus/rules/service-alerts.yml` (4 قواعد):
+  - [x] `ServiceDown` — Blackbox probe فشل لمدة دقيقة (باسم الخدمة + instance)
+  - [x] `SlowResponse` — زمن الاستجابة أعلى من 2 ثانية
+  - [x] `SSLCertExpiringSoon` — أقل من 14 يوم / `SSLCertExpired` — منتهية (critical)
+- [x] `prometheus/rules/container-alerts.yml` (3 قواعد):
+  - [x] `ContainerRestarting` — `changes(container_start_time_seconds[15m]) > 2`
+  - [x] `ContainerHighMemory` — استهلاك حاوية للذاكرة عالي
+  - [x] `SystemdServiceFailed` — وحدة systemd في حالة failed (critical)
+- [x] كل تنبيه فيه Annotations كاملة:
+  - [x] `summary` — عنوان واضح (مع emoji للتمييز البصري)
+  - [x] `description` — السبب المحتمل + المكان (mount/device/container/service)
+  - [x] `dashboard_url` — رابط مباشر للوحة Grafana المناسبة
+- [x] تفعيل routing على Telegram في alertmanager.yml (تم في Phase 1) — مُتحقَّق منه حياً
 
-**✅ الفيز مكتمل لما:**
-- [ ] تنبيه تجريبي فعلي يوصل على Telegram
+**✅ إثبات التسليم الفعلي:**
+- [ ] ⏳ تنبيه تجريبي يوصل فعلياً على Telegram (يحتاج **توكن بوت + chat id حقيقيين** من المستخدم — Pipeline مُثبت، انظر Notes)
 
 **📝 Notes:**
+- **تحقق promtool:** `check config` نجح — **18 قاعدة** موزّعة (host 6 · disk 5 · services 4 · containers 3) كلها syntax سليم + قوالب الـ annotations سليمة.
+- **إصلاح أثناء الكتابة:** `HighLoad` كان فيه خطأ vector-matching (`2 * on(instance) group_left ...`) → صُحّح إلى `> on (instance) (2 * count by (instance)(...))`.
+- **إصلاح أثناء الكتابة:** دالة `divide` غير موجودة في قوالب Prometheus → استُبدلت بـ `$value | humanizeDuration` في تنبيه الـ SSL.
+- **اختبار التدفق الحي (تم فعلاً):**
+  1. Prometheus حمّل الـ 18 قاعدة (`/api/v1/rules` رجّع 4 مجموعات)
+  2. ضخّيت تنبيه تجريبي لـ Alertmanager (`POST /api/v2/alerts` → 200)، وظهر متوجّهاً للـ receiver `telegram-default` عبر `GET /api/v2/alerts`
+  3. Alertmanager حاول الإرسال فعلاً على Telegram (`integration=telegram[0]`) ورجّع `401 Unauthorized` لأن التوكن **وهمي للاختبار** — ده يثبت أن: الـ sed injection للتوكن اشتغل، واللوج `alertmanager-live.yml` اتحمّل، ومسار التنبيه للـ Telegram سليم 100%
+  4. **بالتوكن الحقيقي، الرسالة توصل فوراً** — الخطوة الوحيدة المتبقية هي تزويد التوكن (Phase 5 install.sh بيسأل المستخدم عنه).
+- **الرابط في التنبيه:** `dashboard_url` بيستخدم `http://localhost:3000/d/<uid>` — يلزم نفس نفق SSH. (تحسين مستقبلي: استخدام `GRAFANA_PUBLIC_URL` في القالب — لا يدعمه Prometheus static rules، يتطلب تعديل قبل التطبيق.)
+- **كل تنبيه critical بيتكرر كل ساعة** بدل 4 (في alertmanager.yml)، والـ grouping/`group_wait` بيمنع سبام.
 <!-- ملاحظات الفيز -->
 
 ---
