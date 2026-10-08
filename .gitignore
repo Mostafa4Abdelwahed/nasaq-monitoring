@@ -1,0 +1,29 @@
+# ═══════════════════════ nasaq-monitoring ═══════════════════════
+# الهدف: مستودع نظيف فيه فقط الـ config — الداتا بتتولد وقت التشغيل.
+
+# ─── أسرار (ممنوع ترفعها أبداً) ───
+.env
+*.key
+*.pem
+secrets/
+
+# ─── داتا التشغيل (Docker bind-mounts / positions / WAL / tsdb) ───
+data/
+volumes/
+docker-data/
+grafana/data/
+
+# ─── لوجات وملفات مؤقتة ───
+*.log
+*.tmp
+
+# ─── نسخ targets-manager الاحتياطية (بتتولد وقت التشغيل) ───
+prometheus/targets/*.bak*
+prometheus/targets/backup-*
+
+# ─── نظام التشغيل / محرر الأكواد ───
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

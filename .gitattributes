@@ -1,0 +1,10 @@
+# توحيد endlines على LF (مهم جداً للـ YAML و shell scripts)
+* text=auto eol=lf
+
+# سكربتات الشل لازم LF بدون BOM
+*.sh text eol=lf
+
+# ملفات JSON/YAML تُعامل كنص
+*.json text
+*.yml text
+*.yaml text
