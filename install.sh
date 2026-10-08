@@ -79,7 +79,7 @@ DATA_DIR=./data
 
 GF_SECURITY_ADMIN_USER=admin
 GF_SECURITY_ADMIN_PASSWORD=${GEN_GF_PW}
-GF_INSTALL_PLUGINS=volkovlabs-forms-panel
+GF_INSTALL_PLUGINS=volkovlabs-form-panel
 GRAFANA_PUBLIC_URL=http://localhost:3000
 
 PROMETHEUS_RETENTION=15d
@@ -155,6 +155,22 @@ if systemctl is-active --quiet node_exporter; then
   ok "Node Exporter شغّال على 0.0.0.0:9100"
 else
   warn "Node Exporter مش شغّال صح — راجع: journalctl -u node_exporter -n 30"
+fi
+
+# ───────── 6.5) تحصين الجدار الناري (اختياري لكن مهم) ─────────
+# Node Exporter لازم يبقى متاح لشبكات Docker (عشان Prometheus)،
+# لكن مش لازم يبقى مكشوف للإنترنت. نحوّط ده لو UFW مفعّل.
+if command -v ufw >/dev/null 2>&1; then
+  if ufw status 2>/dev/null | grep -q "Status: active"; then
+    info "ضبط قواعد UFW (حماية Node Exporter)..."
+    ufw allow 22/tcp >/dev/null 2>&1 || true
+    ufw allow from 172.16.0.0/12 to any port 9100 proto tcp >/dev/null 2>&1 || true
+    ok "UFW: 9100 مسموح من شبكات Docker فقط · SSH (22) مفتوح"
+  else
+    warn "UFW موجود لكن غير مُفعّل — منفذ 9100 (Node Exporter) مكشوف. راجعه لو السيرفر له IP عام."
+  fi
+else
+  warn "UFW غير مثبّت — لو السيرفر له IP عام، اقفل منفذ 9100 على الجدار الناري."
 fi
 
 # ───────── 7) تشغيل الستاك ─────────
