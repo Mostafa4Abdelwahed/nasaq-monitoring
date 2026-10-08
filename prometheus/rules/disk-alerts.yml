@@ -1,0 +1,60 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — قواعد تنبيه الأقراص والتخزين
+# ════════════════════════════════════════════════════════════════
+groups:
+  - name: disk
+    rules:
+      # ───────── المساحة قربت تخلص ─────────
+      - alert: DiskSpaceLow
+        expr: 100 - (node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|overlay|squashfs|ramfs"} / node_filesystem_size_bytes{job="node-exporter", fstype!~"tmpfs|overlay|squashfs|ramfs"} * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ مساحة القرص منخفضة ({{ $labels.mountpoint }})"
+          description: "القرص {{ $labels.mountpoint }} امتلأ بنسبة {{ printf \"%.1f\" $value }}%."
+          dashboard_url: "http://localhost:3000/d/nasaq-disk"
+
+      # ───────── المساحة حرجة ─────────
+      - alert: DiskSpaceCritical
+        expr: 100 - (node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|overlay|squashfs|ramfs"} / node_filesystem_size_bytes{job="node-exporter", fstype!~"tmpfs|overlay|squashfs|ramfs"} * 100) > 95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 مساحة القرص حرجة ({{ $labels.mountpoint }})"
+          description: "القرص {{ $labels.mountpoint }} امتلأ بنسبة {{ printf \"%.1f\" $value }}% — خطر توقف الخدمات."
+          dashboard_url: "http://localhost:3000/d/nasaq-disk"
+
+      # ───────── تنبؤ خطي: القرص هيمتلي خلال 24 ساعة ─────────
+      - alert: DiskWillFillIn24h
+        expr: predict_linear(node_filesystem_avail_bytes{job="node-exporter", fstype!~"tmpfs|overlay|squashfs|ramfs"}[6h], 24 * 3600) < 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ القرص سيمتلئ خلال 24 ساعة ({{ $labels.mountpoint }})"
+          description: "بناءً على معدل الاستخدام الحالي، المتوقع امتلاء {{ $labels.mountpoint }} خلال 24 ساعة."
+          dashboard_url: "http://localhost:3000/d/nasaq-disk"
+
+      # ───────── inodes قربت تخلص ─────────
+      - alert: DiskInodesLow
+        expr: 100 * (node_filesystem_files_free{job="node-exporter", fstype!~"tmpfs|overlay|squashfs|ramfs"} / node_filesystem_files{job="node-exporter", fstype!~"tmpfs|overlay|squashfs|ramfs"}) < 15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ عدد inodes منخفض ({{ $labels.mountpoint }})"
+          description: "باقي {{ printf \"%.1f\" $value }}% من الـ inodes على {{ $labels.mountpoint }} — قد تمنع إنشاء ملفات جديدة."
+          dashboard_url: "http://localhost:3000/d/nasaq-disk"
+
+      # ───────── انشغال القرص العالي ─────────
+      - alert: HighDiskIO
+        expr: rate(node_disk_io_time_seconds_total{job="node-exporter"}[5m]) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ انشغال القرص عالي ({{ $labels.device }})"
+          description: "القرص {{ $labels.device }} منشغل بنسبة {{ printf \"%.0f\" $value }}% — بطء محتمل في I/O."
+          dashboard_url: "http://localhost:3000/d/nasaq-disk"

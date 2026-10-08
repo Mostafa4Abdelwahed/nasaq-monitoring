@@ -1,0 +1,73 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — قواعد تنبيه السيرفر (Host / OS)
+#  تُقيَّم في Prometheus وتُرسَل إلى Alertmanager → Telegram
+#  كل تنبيه فيه dashboard_url = رابط مباشر للوحة لتتصرّف فوراً.
+# ════════════════════════════════════════════════════════════════
+groups:
+  - name: host
+    rules:
+      # ───────── السيرفر واقع ─────────
+      - alert: ServerDown
+        expr: up{job="node-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 السيرفر لا يستجيب"
+          description: "Node Exporter توقف عن الرد منذ دقيقة — السيرفر قد يكون وقع أو الشبكة مقطوعة."
+          dashboard_url: "http://localhost:3000/d/nasaq-overview"
+
+      # ───────── المعالج مرتفع ─────────
+      - alert: HighCPU
+        expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle", job="node-exporter"}[5m])) * 100) > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ استهلاك المعالج مرتفع"
+          description: "متوسط استهلاك المعالج {{ printf \"%.1f\" $value }}% لمدة 5 دقائق."
+          dashboard_url: "http://localhost:3000/d/nasaq-overview"
+
+      # ───────── Load Average مرتفع (> ضعفي عدد الأنوية) ─────────
+      - alert: HighLoad
+        expr: node_load5{job="node-exporter"} > on (instance) (2 * count by (instance) (node_cpu_seconds_total{mode="idle", job="node-exporter"}))
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ الحمل (Load) مرتفع جداً"
+          description: "Load5 = {{ printf \"%.2f\" $value }} وهو أكثر من ضعفي عدد الأنوية — احتمال ازدحام العمليات."
+          dashboard_url: "http://localhost:3000/d/nasaq-overview"
+
+      # ───────── الذاكرة مرتفعة ─────────
+      - alert: HighRAM
+        expr: 100 * (1 - node_memory_MemAvailable_bytes{job="node-exporter"} / node_memory_MemTotal_bytes{job="node-exporter"}) > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ استهلاك الذاكرة مرتفع"
+          description: "استخدام الذاكرة {{ printf \"%.1f\" $value }}% لمدة 5 دقائق."
+          dashboard_url: "http://localhost:3000/d/nasaq-overview"
+
+      # ───────── ذاكرة حرجة (احتمال OOM) ─────────
+      - alert: LowMemory
+        expr: node_memory_MemAvailable_bytes{job="node-exporter"} < 0.05 * node_memory_MemTotal_bytes{job="node-exporter"}
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 ذاكرة حرجة — احتمال OOM"
+          description: "المتاح من الذاكرة أقل من 5% — عمليات قد تُقتَل قريباً (Out Of Memory)."
+          dashboard_url: "http://localhost:3000/d/nasaq-containers"
+
+      # ───────── الاعتماد على Swap ─────────
+      - alert: HighSwapUsage
+        expr: (1 - (node_memory_SwapFree_bytes{job="node-exporter"} / node_memory_SwapTotal_bytes{job="node-exporter"})) > 0.5 and node_memory_SwapTotal_bytes{job="node-exporter"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ استخدام Swap مرتفع"
+          description: "أكثر من نصف الـ Swap مستخدم — يسبب انخفاض أداء ملحوظ."
+          dashboard_url: "http://localhost:3000/d/nasaq-overview"

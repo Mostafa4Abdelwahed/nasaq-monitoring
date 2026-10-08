@@ -1,0 +1,50 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — قواعد تنبيه الخدمات والمواقع (Blackbox)
+#  المقاييس مصدرها job = "blackbox-services"
+# ════════════════════════════════════════════════════════════════
+groups:
+  - name: services
+    rules:
+      # ───────── خدمة/موقع واقع ─────────
+      - alert: ServiceDown
+        expr: probe_success{job="blackbox-services"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 الخدمة واقعة: {{ $labels.service }}"
+          description: "الخدمة {{ $labels.service }} ({{ $labels.instance }}) لا تستجيب للفحص منذ دقيقة."
+          dashboard_url: "http://localhost:3000/d/nasaq-services"
+
+      # ───────── استجابة بطيئة ─────────
+      - alert: SlowResponse
+        expr: probe_duration_seconds{job="blackbox-services"} > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ استجابة بطيئة: {{ $labels.service }}"
+          description: "زمن استجابة {{ $labels.service }} = {{ printf \"%.2f\" $value }} ثانية (أعلى من الحد 2 ث)."
+          dashboard_url: "http://localhost:3000/d/nasaq-services"
+
+      # ───────── شهادة SSL قربت تنتهي ─────────
+      - alert: SSLCertExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry{job="blackbox-services"} - time() < 14 * 24 * 3600
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ شهادة SSL قاربت على الانتهاء: {{ $labels.service }}"
+          description: "باقي {{ $value | humanizeDuration }} على انتهاء شهادة {{ $labels.instance }}."
+          dashboard_url: "http://localhost:3000/d/nasaq-services"
+
+      # ───────── شهادة SSL منتهية ─────────
+      - alert: SSLCertExpired
+        expr: probe_ssl_earliest_cert_expiry{job="blackbox-services"} - time() < 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 شهادة SSL منتهية: {{ $labels.service }}"
+          description: "شهادة {{ $labels.instance }} انتهت — الموقع قد يظهر غير آمن للمستخدمين."
+          dashboard_url: "http://localhost:3000/d/nasaq-services"

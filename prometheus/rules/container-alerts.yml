@@ -1,0 +1,39 @@
+# ════════════════════════════════════════════════════════════════
+#  nasaq-monitoring — قواعد تنبيه الحاويات وخدمات systemd
+#  ملاحظة: systemd collector يُفعَّل في Node Exporter (install.sh)
+# ════════════════════════════════════════════════════════════════
+groups:
+  - name: containers
+    rules:
+      # ───────── حاوية بتعمل restart باستمرار ─────────
+      - alert: ContainerRestarting
+        expr: changes(container_start_time_seconds{name!=""}[15m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ حاوية تعيد التشغيل باستمرار: {{ $labels.name }}"
+          description: "الحاوية {{ $labels.name }} أُعيد تشغيلها {{ printf \"%.0f\" $value }} مرات في آخر 15 دقيقة — تحقق من اللوجات."
+          dashboard_url: "http://localhost:3000/d/nasaq-containers"
+
+      # ───────── استهلاك حاوية للذاكرة عالي ─────────
+      - alert: ContainerHighMemory
+        expr: sum by (name) (container_memory_working_set_bytes{name!="", image!=""}) > 800 * 1024 * 1024
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "⚠️ استهلاك ذاكرة عالي للحاوية: {{ $labels.name }}"
+          description: "الحاوية {{ $labels.name }} تستهلك {{ $value | humanize1024 }}B من الذاكرة."
+          dashboard_url: "http://localhost:3000/d/nasaq-containers"
+
+      # ───────── خدمة systemd فشلت ─────────
+      - alert: SystemdServiceFailed
+        expr: node_systemd_unit_state{job="node-exporter", state="failed"} == 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "🔴 خدمة نظام فشلت: {{ $labels.name }}"
+          description: "خدمة systemd {{ $labels.name }} في حالة failed — راجع: systemctl status {{ $labels.name }}"
+          dashboard_url: "http://localhost:3000/d/nasaq-logs"
