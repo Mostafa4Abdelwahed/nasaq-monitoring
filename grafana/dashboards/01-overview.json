@@ -32,7 +32,7 @@
             }
           ],
           "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 1 } ] },
-          "color": { "mode": "background" }
+          "color": { "mode": "thresholds" }
         },
         "overrides": []
       },
@@ -120,7 +120,7 @@
         "defaults": {
           "mappings": [ { "type": "value", "options": { "0": { "text": "الكل شغّال", "color": "green", "index": 0 } } } ],
           "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] },
-          "color": { "mode": "background" }
+          "color": { "mode": "thresholds" }
         },
         "overrides": []
       },
