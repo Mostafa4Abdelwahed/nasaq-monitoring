@@ -4,27 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>إدارة المراقبة — nasaq</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23F2A93B'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%234ADE80'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a1a1d;
-    --bg-raise: #0e2226;
-    --panel: #122a2f;
-    --line: #1f3d43;
-    --ink: #eaf3f0;
-    --muted: #8aa6a1;
-    --faint: #5c7873;
-    --amber: #f2a93b;
-    --amber-ink: #1a1206;
-    --amber-tint: rgba(242, 169, 59, 0.12);
+    --bg: #0a1510;
+    --bg-raise: #0e2017;
+    --panel: #122619;
+    --line: #1f4030;
+    --ink: #eaf4ec;
+    --muted: #8ca696;
+    --faint: #5d7a67;
+    --brand: #4ade80;
+    --brand-ink: #06130c;
+    --brand-tint: rgba(74, 222, 128, 0.12);
     --ok: #3ecf8e;
     --ok-glow: rgba(62, 207, 142, 0.55);
     --down: #ee6b6b;
     --down-tint: rgba(238, 107, 107, 0.1);
-    --chip: #16333a;
+    --chip: #16382a;
     --radius-panel: 14px;
     --radius-control: 8px;
   }
@@ -39,8 +39,8 @@
     line-height: 1.7;
     min-height: 100dvh;
   }
-  ::selection { background: var(--amber); color: var(--amber-ink); }
-  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+  ::selection { background: var(--brand); color: var(--brand-ink); }
+  :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
   .display { font-family: Cairo, "IBM Plex Sans Arabic", sans-serif; }
 
   /* ── لحظة الدخول الوحيدة ── */
@@ -61,8 +61,8 @@
   .gate-mark { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
   .lamp {
     width: 14px; height: 14px; border-radius: 50%;
-    background: var(--amber);
-    box-shadow: 0 0 14px 3px rgba(242, 169, 59, 0.55);
+    background: var(--brand);
+    box-shadow: 0 0 14px 3px rgba(74, 222, 128, 0.5);
     flex: none;
   }
   .gate-mark span {
@@ -88,7 +88,7 @@
     width: 100%;
   }
   .control::placeholder { color: var(--faint); }
-  .control:focus { border-color: var(--amber); outline: none; }
+  .control:focus { border-color: var(--brand); outline: none; }
   select.control option { background: var(--panel); }
   .token-row { display: flex; gap: 8px; }
   .token-row .control { font-variant-numeric: tabular-nums; }
@@ -108,7 +108,7 @@
     border: none; border-radius: 10px; cursor: pointer;
     padding: 12px 22px;
   }
-  .btn-primary { background: var(--amber); color: var(--amber-ink); width: 100%; }
+  .btn-primary { background: var(--brand); color: var(--brand-ink); width: 100%; }
   .btn-primary:hover { filter: brightness(1.07); }
   .btn-primary:disabled { opacity: 0.55; cursor: wait; filter: none; }
   .gate-error {
@@ -156,8 +156,12 @@
     display: flex; flex-wrap: wrap;
     margin-bottom: 22px;
   }
-  .stat { padding: 4px 26px 4px 0; }
-  .stat + .stat { border-inline-start: 1px solid var(--line); padding-inline-start: 26px; }
+  .stat { padding: 4px 0; }
+  .stat + .stat {
+    border-inline-start: 1px solid var(--line);
+    padding-inline-start: 26px;
+    margin-inline-start: 26px;
+  }
   .stat b {
     display: block;
     font-family: Cairo, sans-serif; font-weight: 800; font-size: 28px;
@@ -195,6 +199,32 @@
   .form-msg.ok { display: block; background: rgba(62, 207, 142, 0.12); color: var(--ok); }
   .form-msg.err { display: block; background: var(--down-tint); color: var(--down); }
 
+  .tg-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 12px;
+    align-items: end;
+  }
+  .tg-grid .field { margin-bottom: 0; }
+  .tg-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .tg-actions .btn-primary { width: auto; }
+  .btn-danger-ghost.armed { background: var(--down); border-color: var(--down); color: #fff; }
+
+  .tg-dialog {
+    background: var(--panel);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 22px 24px;
+    width: min(560px, 94vw);
+  }
+  .tg-dialog::backdrop { background: rgba(4, 10, 8, 0.72); }
+  .tg-dialog-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .tg-dialog h2 {
+    font-family: Cairo, sans-serif; font-weight: 800; font-size: 18px; margin: 0;
+  }
+  .tg-dialog .lede { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+
   .ledger-head {
     display: flex; align-items: baseline; gap: 12px;
     margin: 0 2px 6px;
@@ -213,14 +243,14 @@
   .trow:last-child { border-bottom: 1px solid var(--line); }
   .trow.flash { animation: flash 1.6s ease-out; }
   @keyframes flash {
-    0% { background: var(--amber-tint); }
+    0% { background: var(--brand-tint); }
     100% { background: transparent; }
   }
   .trow.leaving { opacity: 0; transition: opacity 0.25s ease-out; }
   .tname { display: flex; align-items: center; gap: 11px; min-width: 0; }
   .tname .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
   .tname .dot.on { background: var(--ok); box-shadow: 0 0 10px 2px var(--ok-glow); }
-  .tname .dot.off { background: transparent; border: 2px solid var(--amber); }
+  .tname .dot.off { background: transparent; border: 2px solid var(--muted); }
   .tname b { font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tname small { display: block; font-weight: 400; font-size: 12px; color: var(--faint); }
   .ttarget {
@@ -265,7 +295,7 @@
   .toast div {
     background: var(--panel);
     border: 1px solid var(--line);
-    border-inline-start: 3px solid var(--amber);
+    border-inline-start: 3px solid var(--brand);
     border-radius: 10px;
     padding: 11px 22px;
     font-size: 13.5px;
@@ -283,8 +313,8 @@
     .trow { grid-template-columns: 1fr auto; row-gap: 8px; }
     .ttarget { grid-column: 1 / -1; order: 3; }
     .tdate { display: none; }
-    .stat { padding: 4px 16px 4px 0; }
-    .stat + .stat { padding-inline-start: 16px; }
+    .stat { padding: 4px 0; }
+    .stat + .stat { padding-inline-start: 16px; margin-inline-start: 16px; }
     .stat b { font-size: 23px; }
   }
 
@@ -302,7 +332,7 @@
 <div id="view-login" class="view" hidden>
   <div class="gate-wrap">
     <div class="gate">
-      <div class="gate-mark"><span class="lamp" aria-hidden="true"></span><span>nasaq مراقبة</span></div>
+      <div class="gate-mark"><span class="lamp" aria-hidden="true"></span><span>مراقب نسق</span></div>
       <h1 class="gate-title display">غرفة المراقبة</h1>
       <p class="gate-sub">إدارة المواقع والخدمات الخاضعة للفحص. الدخول بمفتاح الإدارة مرة واحدة على هذا المتصفح.</p>
       <form id="login-form" autocomplete="off">
@@ -330,6 +360,10 @@
       <div class="brand"><span class="lamp" aria-hidden="true"></span><b class="display">إدارة المراقبة</b></div>
       <div class="spacer"></div>
       <div class="conn"><i aria-hidden="true"></i><span>متصل بالفحص</span></div>
+      <button class="btn-ghost" id="tg-open" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        بوت التيليجرام
+      </button>
       <button class="btn-ghost" id="logout-btn" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         خروج
@@ -368,6 +402,33 @@
       </div>
       <div id="add-msg" class="form-msg" role="alert"></div>
     </section>
+
+    <dialog class="tg-dialog" id="tg-dialog" aria-labelledby="tg-title">
+      <div class="tg-dialog-head">
+        <h2 class="display" id="tg-title">بوت التيليجرام</h2>
+        <div class="spacer"></div>
+        <button class="icon-btn" id="tg-close" type="button" aria-label="إغلاق">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <p class="lede" id="tg-status">جاري قراءة الإعداد الحالي…</p>
+      <div class="tg-grid">
+        <div class="field">
+          <label for="tg-token">توكن البوت</label>
+          <input class="control" id="tg-token" type="password" placeholder="123456:ABC…" dir="ltr" style="text-align:right" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="tg-chat">Chat ID</label>
+          <input class="control" id="tg-chat" placeholder="-123456789" dir="ltr" style="text-align:right" inputmode="numeric" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="tg-actions">
+        <button class="btn btn-primary" id="tg-save" type="button">حفظ بيانات البوت</button>
+        <button class="btn-ghost" id="tg-test" type="button">إرسال تجريبي</button>
+        <button class="btn-ghost btn-danger-ghost" id="tg-reset" type="button" hidden>العودة لإعدادات .env</button>
+      </div>
+      <div id="tg-msg" class="form-msg" role="alert"></div>
+    </dialog>
 
     <section aria-label="الخدمات">
       <div class="ledger-head">
@@ -609,6 +670,83 @@ function backToLogin() {
   loginFail("انتهت الجلسة — أدخل المفتاح مجدداً.");
   show("login");
 }
+
+/* ── بوت التيليجرام (dialog) ── */
+const tgDialog = $("tg-dialog");
+$("tg-open").onclick = () => {
+  $("tg-msg").className = "form-msg";
+  $("tg-token").value = "";
+  loadTelegram();
+  tgDialog.showModal();
+};
+$("tg-close").onclick = () => tgDialog.close();
+tgDialog.addEventListener("click", (ev) => {
+  if (ev.target === tgDialog) tgDialog.close();
+});
+async function loadTelegram() {
+  const st = $("tg-status");
+  try {
+    const r = await api("/telegram");
+    const j = r.data || {};
+    if (j.source === "page") {
+      st.textContent = "المصدر الحالي: هذه الصفحة" + (j.chat_id ? ` (Chat ID: ${j.chat_id})` : "") + " — يُطبق أي تغيير خلال ~١٥ ثانية بدون إعادة تشغيل.";
+      $("tg-token").placeholder = j.token_suffix ? `محفوظ (ينتهي بـ ${j.token_suffix}) — اتركه فاضياً للإبقاء` : "محفوظ — اتركه فاضياً للإبقاء";
+      if (j.chat_id) $("tg-chat").value = j.chat_id;
+      $("tg-reset").hidden = false;
+    } else {
+      st.textContent = "المصدر الحالي: ملف .env على السيرفر — احفظ من هنا للتحكم عبر الصفحة.";
+      $("tg-token").placeholder = "123456:ABC…";
+      $("tg-reset").hidden = true;
+    }
+  } catch (e) {
+    st.textContent = "تعذر قراءة إعداد البوت.";
+  }
+}
+$("tg-save").onclick = async () => {
+  const msg = $("tg-msg");
+  const r = await api("/telegram", {
+    method: "POST",
+    body: JSON.stringify({ bot_token: $("tg-token").value.trim(), chat_id: $("tg-chat").value.trim() })
+  });
+  if (r.ok) {
+    $("tg-token").value = "";
+    flashMsg(msg, true, "حُفظ — يُطبق على Alertmanager خلال ~١٥ ثانية. جرّب زر الإرسال التجريبي للتأكد.");
+    toast("حُفظت بيانات البوت");
+    loadTelegram();
+  } else if (r.status === 401) { backToLogin(); }
+  else flashMsg(msg, false, "خطأ: " + (r.data.error || "غير معروف"));
+};
+$("tg-test").onclick = async () => {
+  const msg = $("tg-msg");
+  flashMsg(msg, true, "يُرسل…");
+  const r = await api("/telegram/test", { method: "POST" });
+  if (r.ok) { flashMsg(msg, true, "وصل الطلب — راجع التيليجرام خلال ثوانٍ."); toast("أُرسل تنبيه تجريبي"); }
+  else if (r.status === 401) { backToLogin(); }
+  else flashMsg(msg, false, "خطأ: " + (r.data.error || "غير معروف"));
+};
+let tgArmTimer = null;
+$("tg-reset").onclick = async (ev) => {
+  const b = ev.currentTarget;
+  const msg = $("tg-msg");
+  if (!b.classList.contains("armed")) {
+    b.classList.add("armed");
+    b.textContent = "تأكيد العودة؟";
+    clearTimeout(tgArmTimer);
+    tgArmTimer = setTimeout(() => { b.classList.remove("armed"); b.textContent = "العودة لإعدادات .env"; }, 4000);
+    return;
+  }
+  clearTimeout(tgArmTimer);
+  const r = await api("/telegram", { method: "DELETE" });
+  b.classList.remove("armed");
+  b.textContent = "العودة لإعدادات .env";
+  if (r.ok) {
+    $("tg-token").value = ""; $("tg-chat").value = "";
+    flashMsg(msg, true, "عاد المصدر إلى .env — يُطبق خلال ~١٥ ثانية.");
+    loadTelegram();
+  }
+  else if (r.status === 401) { backToLogin(); }
+  else flashMsg(msg, false, "خطأ: " + (r.data.error || "غير معروف"));
+};
 
 function enter() {
   show("app");

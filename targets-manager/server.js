@@ -23,6 +23,11 @@ const STATE_FILE = path.join(STATE_DIR, "targets-state.json");
 const SERVICES_FILE = path.join(TARGETS_DIR, "services.json");
 const BACKUPS_DIR = path.join(TARGETS_DIR, "backups");
 const MAX_BACKUPS = 10;
+// بيانات بوت التيليجرام المُدارة من صفحة الإدارة (تتفوق على .env عند وجودها)
+const TELEGRAM_FILE = path.join(STATE_DIR, "telegram.env");
+const ALERTMANAGER_URL = String(
+  process.env.ALERTMANAGER_URL || "http://alertmanager:9093"
+).replace(/\/$/, "");
 
 if (!TOKEN) {
   console.error("FATAL: TARGETS_MANAGER_TOKEN is required (from .env)");
@@ -85,6 +90,31 @@ function validateServiceName(s) {
   return /^[A-Za-z0-9_.\-]{1,64}$/.test(s || "")
     ? null
     : "اسم الخدمة: حروف إنجليزية/أرقام/نقطة/_ فقط، حتى 64 حرفاً";
+}
+
+// ───────────────────────── تيليجرام ─────────────────────────
+// الصياغة مقيدة عمداً (بدون مسافات/علامات) لسلامة التضمين في sed والـ shell.
+function validBotToken(t) {
+  return /^\d{5,}:[A-Za-z0-9_-]{20,}$/.test(String(t || ""));
+}
+function validChatId(c) {
+  return /^-?\d{1,20}$/.test(String(c || ""));
+}
+// { source: "page"|"env", token, chat_id } — التوكن الكامل لا يغادر الخادم أبداً
+function readTelegram() {
+  try {
+    const content = fs.readFileSync(TELEGRAM_FILE, "utf8");
+    const tok = (/^TELEGRAM_BOT_TOKEN='([^']*)'/m.exec(content) || [])[1] || "";
+    const chat = (/^TELEGRAM_CHAT_ID='([^']*)'/m.exec(content) || [])[1] || "";
+    if (tok && validBotToken(tok) && validChatId(chat))
+      return { source: "page", token: tok, chat_id: chat };
+  } catch {}
+  return { source: "env", token: "", chat_id: "" };
+}
+async function writeTelegram(tok, chat) {
+  const body = `TELEGRAM_BOT_TOKEN='${tok}'\nTELEGRAM_CHAT_ID='${chat}'\n`;
+  await fsp.writeFile(TELEGRAM_FILE + ".tmp", body);
+  await fsp.rename(TELEGRAM_FILE + ".tmp", TELEGRAM_FILE);
 }
 
 // ───────────────────────── الملفات ─────────────────────────
@@ -248,6 +278,80 @@ const server = http.createServer(async (req, res) => {
 
     if (p === "/api/modules") {
       return sendJSON(res, 200, { modules: readModules() });
+    }
+
+    // ── إعدادات بوت التيليجرام (تُطبق على Alertmanager خلال ~15 ثانية) ──
+    if (p === "/api/telegram") {
+      if (req.method === "GET") {
+        const cur = readTelegram();
+        return sendJSON(res, 200, {
+          source: cur.source,
+          token_set: cur.source === "page",
+          token_suffix: cur.source === "page" ? cur.token.slice(-4) : "",
+          chat_id: cur.source === "page" ? cur.chat_id : "",
+        });
+      }
+      if (!authorized(req))
+        return sendJSON(res, 401, { error: "توكن غير صحيح أو مفقود" });
+      if (req.method === "POST") {
+        let body;
+        try {
+          body = JSON.parse((await readBody(req)) || "{}");
+        } catch {
+          return sendJSON(res, 400, { error: "JSON غير صالح" });
+        }
+        const cur = readTelegram();
+        // التوكن الفارغ = إبقاء الحالي (يشترط وجود إعداد محفوظ)
+        const tok = String((body || {}).bot_token || "").trim();
+        const chat = String((body || {}).chat_id || "").trim();
+        const finalTok = tok || cur.token;
+        if (!finalTok)
+          return sendJSON(res, 400, { error: "أدخل توكن البوت أولاً" });
+        if (!validBotToken(finalTok))
+          return sendJSON(res, 400, { error: "صيغة التوكن غير صحيحة (مثال: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11)" });
+        if (!validChatId(chat))
+          return sendJSON(res, 400, { error: "Chat ID غير صالح (أرقام فقط، وسالب للجروبات)" });
+        await writeTelegram(finalTok, chat);
+        log("telegram settings saved (chat_id " + chat + ")");
+        return sendJSON(res, 200, { ok: true });
+      }
+      if (req.method === "DELETE") {
+        try {
+          await fsp.unlink(TELEGRAM_FILE);
+        } catch {}
+        log("telegram settings reverted to .env");
+        return sendJSON(res, 200, { ok: true });
+      }
+      return sendJSON(res, 405, { error: "method not allowed" });
+    }
+
+    // تنبيه تجريبي عبر Alertmanager الحالي (للتحقق بعد الحفظ)
+    if (p === "/api/telegram/test") {
+      if (!authorized(req))
+        return sendJSON(res, 401, { error: "توكن غير صحيح أو مفقود" });
+      if (req.method !== "POST")
+        return sendJSON(res, 405, { error: "method not allowed" });
+      try {
+        const r = await fetch(ALERTMANAGER_URL + "/api/v2/alerts", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify([
+            {
+              labels: { alertname: "PageTest", severity: "info", service: "targets-page" },
+              annotations: {
+                summary: "test from management page",
+                description: "If you got this, the Telegram bot settings are working.",
+              },
+            },
+          ]),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!r.ok) throw new Error("alertmanager status " + r.status);
+        return sendJSON(res, 200, { ok: true });
+      } catch (e) {
+        log("telegram test failed:", e.message);
+        return sendJSON(res, 502, { error: "تعذر الوصول لـ Alertmanager: " + e.message });
+      }
     }
 
     if (p === "/api/targets") {

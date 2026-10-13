@@ -80,18 +80,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093"   # للمراجعة/debug فقط
-    entrypoint: ["/bin/sh", "-c"]
-    # أمكانية إضافة البيانات من الـ env: ملف الـ yml فيه placeholders
-    # (توكن تيليجرام + chat id) يتم حقنها هنا قبل التشغيل
-    command:
-      - >-
-        sed
-        -e "s|__TELEGRAM_BOT_TOKEN__|$${TELEGRAM_BOT_TOKEN:-disabled}|g"
-        -e "s|__TELEGRAM_CHAT_ID__|$${TELEGRAM_CHAT_ID:-1}|g"
-        /etc/alertmanager/alertmanager.yml > /alertmanager/alertmanager-live.yml
-        && exec /bin/alertmanager
-        --config.file=/alertmanager/alertmanager-live.yml
-        --storage.path=/alertmanager
+    # يولّد الإعداد الحي من القالب: قيم الصفحة (telegram.env) تتفوق على .env،
+    # وأي تغيير من الصفحة يُعاد تطبيقه تلقائياً خلال ~10 ثوانٍ (بدون recreate)
+    entrypoint: ["/bin/sh", "/etc/alertmanager/entrypoint.sh"]
     environment:
       TZ: ${TZ:-Africa/Cairo}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -99,6 +90,7 @@ services:
     volumes:
       - ./alertmanager:/etc/alertmanager:ro
       - ${DATA_DIR:-./data}/alertmanager:/alertmanager
+      - ${DATA_DIR:-./data}/targets-state:/etc/nasaq-state:ro
     logging: *default-logging
     networks:
       - monitoring
