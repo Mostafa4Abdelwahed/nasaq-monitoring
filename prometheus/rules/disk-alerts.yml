@@ -11,8 +11,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ مساحة القرص منخفضة ({{ $labels.mountpoint }})"
-          description: "القرص {{ $labels.mountpoint }} امتلأ بنسبة {{ printf \"%.1f\" $value }}%."
+          summary: "Low disk space ({{ $labels.mountpoint }})"
+          description: "Disk {{ $labels.mountpoint }} is {{ printf \"%.1f\" $value }}% full."
           dashboard_url: "http://localhost:3000/d/nasaq-disk"
 
       # ───────── المساحة حرجة ─────────
@@ -22,8 +22,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "🔴 مساحة القرص حرجة ({{ $labels.mountpoint }})"
-          description: "القرص {{ $labels.mountpoint }} امتلأ بنسبة {{ printf \"%.1f\" $value }}% — خطر توقف الخدمات."
+          summary: "Critical disk space ({{ $labels.mountpoint }})"
+          description: "Disk {{ $labels.mountpoint }} is {{ printf \"%.1f\" $value }}% full — services may stop."
           dashboard_url: "http://localhost:3000/d/nasaq-disk"
 
       # ───────── تنبؤ خطي: القرص هيمتلي خلال 24 ساعة ─────────
@@ -33,8 +33,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ القرص سيمتلئ خلال 24 ساعة ({{ $labels.mountpoint }})"
-          description: "بناءً على معدل الاستخدام الحالي، المتوقع امتلاء {{ $labels.mountpoint }} خلال 24 ساعة."
+          summary: "Disk will fill within 24h ({{ $labels.mountpoint }})"
+          description: "At the current usage rate, {{ $labels.mountpoint }} is expected to fill within 24 hours."
           dashboard_url: "http://localhost:3000/d/nasaq-disk"
 
       # ───────── inodes قربت تخلص ─────────
@@ -44,8 +44,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ عدد inodes منخفض ({{ $labels.mountpoint }})"
-          description: "باقي {{ printf \"%.1f\" $value }}% من الـ inodes على {{ $labels.mountpoint }} — قد تمنع إنشاء ملفات جديدة."
+          summary: "Low inodes ({{ $labels.mountpoint }})"
+          description: "{{ printf \"%.1f\" $value }}% of inodes remain on {{ $labels.mountpoint }} — new file creation may fail."
           dashboard_url: "http://localhost:3000/d/nasaq-disk"
 
       # ───────── انشغال القرص العالي ─────────
@@ -55,6 +55,6 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ انشغال القرص عالي ({{ $labels.device }})"
-          description: "القرص {{ $labels.device }} منشغل بنسبة {{ printf \"%.0f\" $value }}% — بطء محتمل في I/O."
+          summary: "High disk IO ({{ $labels.device }})"
+          description: "Disk {{ $labels.device }} is {{ printf \"%.0f\" $value }}% busy — possible I/O slowness."
           dashboard_url: "http://localhost:3000/d/nasaq-disk"

@@ -13,8 +13,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "🔴 السيرفر لا يستجيب"
-          description: "Node Exporter توقف عن الرد منذ دقيقة — السيرفر قد يكون وقع أو الشبكة مقطوعة."
+          summary: "Server not responding"
+          description: "Node Exporter has not responded for a minute — the server may be down or unreachable."
           dashboard_url: "http://localhost:3000/d/nasaq-overview"
 
       # ───────── المعالج مرتفع ─────────
@@ -24,8 +24,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ استهلاك المعالج مرتفع"
-          description: "متوسط استهلاك المعالج {{ printf \"%.1f\" $value }}% لمدة 5 دقائق."
+          summary: "High CPU usage"
+          description: "Average CPU usage is {{ printf \"%.1f\" $value }}% over 5 minutes."
           dashboard_url: "http://localhost:3000/d/nasaq-overview"
 
       # ───────── Load Average مرتفع (> ضعفي عدد الأنوية) ─────────
@@ -35,8 +35,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ الحمل (Load) مرتفع جداً"
-          description: "Load5 = {{ printf \"%.2f\" $value }} وهو أكثر من ضعفي عدد الأنوية — احتمال ازدحام العمليات."
+          summary: "Very high load average"
+          description: "Load5 = {{ printf \"%.2f\" $value }}, more than twice the core count — possible overload."
           dashboard_url: "http://localhost:3000/d/nasaq-overview"
 
       # ───────── الذاكرة مرتفعة ─────────
@@ -46,8 +46,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ استهلاك الذاكرة مرتفع"
-          description: "استخدام الذاكرة {{ printf \"%.1f\" $value }}% لمدة 5 دقائق."
+          summary: "High memory usage"
+          description: "Memory usage is {{ printf \"%.1f\" $value }}% over 5 minutes."
           dashboard_url: "http://localhost:3000/d/nasaq-overview"
 
       # ───────── ذاكرة حرجة (احتمال OOM) ─────────
@@ -57,8 +57,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "🔴 ذاكرة حرجة — احتمال OOM"
-          description: "المتاح من الذاكرة أقل من 5% — عمليات قد تُقتَل قريباً (Out Of Memory)."
+          summary: "Critical memory — possible OOM"
+          description: "Available memory is below 5% — processes may be killed soon (Out Of Memory)."
           dashboard_url: "http://localhost:3000/d/nasaq-containers"
 
       # ───────── الاعتماد على Swap ─────────
@@ -68,6 +68,6 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ استخدام Swap مرتفع"
-          description: "أكثر من نصف الـ Swap مستخدم — يسبب انخفاض أداء ملحوظ."
+          summary: "High swap usage"
+          description: "More than half of swap is in use — expect noticeable slowdown."
           dashboard_url: "http://localhost:3000/d/nasaq-overview"

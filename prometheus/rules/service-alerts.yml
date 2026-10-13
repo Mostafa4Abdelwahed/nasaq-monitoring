@@ -12,8 +12,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "🔴 الخدمة واقعة: {{ $labels.service }}"
-          description: "الخدمة {{ $labels.service }} ({{ $labels.instance }}) لا تستجيب للفحص منذ دقيقة."
+          summary: "Service down: {{ $labels.service }}"
+          description: "Service {{ $labels.service }} ({{ $labels.instance }}) has not responded to probing for a minute."
           dashboard_url: "http://localhost:3000/d/nasaq-services"
 
       # ───────── استجابة بطيئة ─────────
@@ -23,8 +23,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ استجابة بطيئة: {{ $labels.service }}"
-          description: "زمن استجابة {{ $labels.service }} = {{ printf \"%.2f\" $value }} ثانية (أعلى من الحد 2 ث)."
+          summary: "Slow response: {{ $labels.service }}"
+          description: "Response time of {{ $labels.service }} is {{ printf \"%.2f\" $value }}s (above the 2s limit)."
           dashboard_url: "http://localhost:3000/d/nasaq-services"
 
       # ───────── شهادة SSL قربت تنتهي ─────────
@@ -34,8 +34,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ شهادة SSL قاربت على الانتهاء: {{ $labels.service }}"
-          description: "باقي {{ $value | humanizeDuration }} على انتهاء شهادة {{ $labels.instance }}."
+          summary: "SSL certificate expiring soon: {{ $labels.service }}"
+          description: "{{ $value | humanizeDuration }} left until the certificate of {{ $labels.instance }} expires."
           dashboard_url: "http://localhost:3000/d/nasaq-services"
 
       # ───────── شهادة SSL منتهية ─────────
@@ -45,6 +45,6 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "🔴 شهادة SSL منتهية: {{ $labels.service }}"
-          description: "شهادة {{ $labels.instance }} انتهت — الموقع قد يظهر غير آمن للمستخدمين."
+          summary: "SSL certificate expired: {{ $labels.service }}"
+          description: "The certificate of {{ $labels.instance }} has expired — the site may appear insecure to visitors."
           dashboard_url: "http://localhost:3000/d/nasaq-services"

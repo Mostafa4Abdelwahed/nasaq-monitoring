@@ -12,8 +12,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ حاوية تعيد التشغيل باستمرار: {{ $labels.name }}"
-          description: "الحاوية {{ $labels.name }} أُعيد تشغيلها {{ printf \"%.0f\" $value }} مرات في آخر 15 دقيقة — تحقق من اللوجات."
+          summary: "Container restarting repeatedly: {{ $labels.name }}"
+          description: "Container {{ $labels.name }} restarted {{ printf \"%.0f\" $value }} times in the last 15 minutes — check the logs."
           dashboard_url: "http://localhost:3000/d/nasaq-containers"
 
       # ───────── استهلاك حاوية للذاكرة عالي ─────────
@@ -23,8 +23,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "⚠️ استهلاك ذاكرة عالي للحاوية: {{ $labels.name }}"
-          description: "الحاوية {{ $labels.name }} تستهلك {{ $value | humanize1024 }}B من الذاكرة."
+          summary: "High container memory usage: {{ $labels.name }}"
+          description: "Container {{ $labels.name }} is using {{ $value | humanize1024 }}B of memory."
           dashboard_url: "http://localhost:3000/d/nasaq-containers"
 
       # ───────── خدمة systemd فشلت ─────────
@@ -34,6 +34,6 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "🔴 خدمة نظام فشلت: {{ $labels.name }}"
-          description: "خدمة systemd {{ $labels.name }} في حالة failed — راجع: systemctl status {{ $labels.name }}"
+          summary: "System unit failed: {{ $labels.name }}"
+          description: "systemd service {{ $labels.name }} is in failed state — check: systemctl status {{ $labels.name }}"
           dashboard_url: "http://localhost:3000/d/nasaq-logs"
