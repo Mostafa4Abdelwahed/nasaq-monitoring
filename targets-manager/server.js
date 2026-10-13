@@ -239,6 +239,13 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, { ok: true, ts: new Date().toISOString() });
     }
 
+    // تحقق من التوكن (تستخدمه صفحة الدخول قبل عرض اللوحة)
+    if (p === "/api/auth/verify") {
+      if (!authorized(req))
+        return sendJSON(res, 401, { ok: false, error: "توكن غير صحيح أو مفقود" });
+      return sendJSON(res, 200, { ok: true });
+    }
+
     if (p === "/api/modules") {
       return sendJSON(res, 200, { modules: readModules() });
     }

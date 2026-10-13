@@ -3,210 +3,634 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>nasaq — إدارة الخدمات المراقَبة</title>
+<title>إدارة المراقبة — nasaq</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%23F2A93B'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0d1117; --panel: #161b22; --border: #30363d;
-    --text: #e6edf3; --muted: #8b949e; --accent: #3b82f6;
-    --ok: #2ea043; --warn: #d29922; --err: #f85149;
+    --bg: #0a1a1d;
+    --bg-raise: #0e2226;
+    --panel: #122a2f;
+    --line: #1f3d43;
+    --ink: #eaf3f0;
+    --muted: #8aa6a1;
+    --faint: #5c7873;
+    --amber: #f2a93b;
+    --amber-ink: #1a1206;
+    --amber-tint: rgba(242, 169, 59, 0.12);
+    --ok: #3ecf8e;
+    --ok-glow: rgba(62, 207, 142, 0.55);
+    --down: #ee6b6b;
+    --down-tint: rgba(238, 107, 107, 0.1);
+    --chip: #16333a;
+    --radius-panel: 14px;
+    --radius-control: 8px;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
-    margin: 0; padding: 24px; font-family: "Segoe UI", system-ui, sans-serif;
-    background: var(--bg); color: var(--text); font-size: 14px;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans Arabic", "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    min-height: 100dvh;
   }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin-bottom: 24px; font-size: 13px; }
-  .card {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;
+  ::selection { background: var(--amber); color: var(--amber-ink); }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+  .display { font-family: Cairo, "IBM Plex Sans Arabic", sans-serif; }
+
+  /* ── لحظة الدخول الوحيدة ── */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
   }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
-  label { font-size: 12px; color: var(--muted); }
-  input, select {
-    background: #0d1117; border: 1px solid var(--border); color: var(--text);
-    border-radius: 6px; padding: 8px 10px; font-family: inherit; font-size: 13px;
+  .view-enter { animation: rise 0.32s ease-out; }
+
+  /* ══════════ البوابة ══════════ */
+  .gate-wrap {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
   }
-  input:focus, select:focus { outline: 1px solid var(--accent); }
-  button {
-    background: var(--accent); color: #fff; border: none; border-radius: 6px;
-    padding: 8px 16px; cursor: pointer; font-family: inherit; font-size: 13px;
+  .gate { width: min(460px, 94vw); }
+  .gate-mark { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+  .lamp {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 14px 3px rgba(242, 169, 59, 0.55);
+    flex: none;
   }
-  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
-  button.danger { background: var(--err); }
-  button.warn { background: var(--warn); }
-  button:active { transform: scale(.98); }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th, td { text-align: right; padding: 10px 8px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; }
-  td { font-size: 13px; }
-  code { color: #79c0ff; direction: ltr; unicode-bidi: embed; }
-  .badge {
-    display: inline-block; padding: 2px 10px; border-radius: 12px;
-    font-size: 11px; font-weight: 600;
+  .gate-mark span {
+    font-family: Cairo, sans-serif; font-weight: 800; font-size: 17px;
+    color: var(--muted);
   }
-  .on  { background: rgba(46,160,67,.15); color: var(--ok); }
-  .off { background: rgba(210,153,34,.15); color: var(--warn); }
-  .msg { margin-top: 12px; padding: 10px 14px; border-radius: 8px; display: none; font-size: 13px; }
-  .msg.ok   { display: block; background: rgba(46,160,67,.15); color: var(--ok); }
-  .msg.err  { display: block; background: rgba(248,81,73,.15); color: var(--err); }
-  .muted { color: var(--muted); }
-  .empty { text-align: center; color: var(--muted); padding: 24px; }
+  .gate-title {
+    font-weight: 900;
+    font-size: clamp(36px, 7vw, 54px);
+    line-height: 1.25;
+    margin: 0 0 10px;
+  }
+  .gate-sub { color: var(--muted); margin: 0 0 30px; max-width: 38ch; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field label { font-size: 13px; color: var(--muted); }
+  .control {
+    background: var(--bg-raise);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: var(--radius-control);
+    padding: 11px 14px;
+    font: inherit;
+    width: 100%;
+  }
+  .control::placeholder { color: var(--faint); }
+  .control:focus { border-color: var(--amber); outline: none; }
+  select.control option { background: var(--panel); }
+  .token-row { display: flex; gap: 8px; }
+  .token-row .control { font-variant-numeric: tabular-nums; }
+  .icon-btn {
+    flex: none; width: 46px;
+    background: var(--bg-raise);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    color: var(--muted);
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .icon-btn:hover { color: var(--ink); border-color: var(--faint); }
+  .icon-btn svg { width: 19px; height: 19px; }
+  .btn {
+    font-family: Cairo, sans-serif; font-weight: 800; font-size: 15px;
+    border: none; border-radius: 10px; cursor: pointer;
+    padding: 12px 22px;
+  }
+  .btn-primary { background: var(--amber); color: var(--amber-ink); width: 100%; }
+  .btn-primary:hover { filter: brightness(1.07); }
+  .btn-primary:disabled { opacity: 0.55; cursor: wait; filter: none; }
+  .gate-error {
+    display: none;
+    margin-top: 14px; padding: 10px 14px;
+    border-radius: var(--radius-control);
+    background: var(--down-tint); color: var(--down);
+    font-size: 13px;
+  }
+  .gate-error.show { display: block; }
+  .gate-hint { margin-top: 22px; color: var(--faint); font-size: 12.5px; max-width: 44ch; }
+
+  /* ══════════ اللوحة ══════════ */
+  .shell { max-width: 1060px; margin: 0 auto; padding: 22px 20px 80px; }
+  .topbar {
+    display: flex; align-items: center; gap: 14px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .lamp { width: 11px; height: 11px; }
+  .brand b { font-family: Cairo, sans-serif; font-weight: 800; font-size: 16px; }
+  .spacer { flex: 1; }
+  .conn {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; color: var(--muted);
+  }
+  .conn i {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 10px 2px var(--ok-glow);
+  }
+  .btn-ghost {
+    font-family: Cairo, sans-serif; font-weight: 700; font-size: 13px;
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--line); border-radius: var(--radius-control);
+    padding: 8px 16px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--faint); }
+  .btn-ghost svg { width: 15px; height: 15px; }
+
+  .stats {
+    display: flex; flex-wrap: wrap;
+    margin-bottom: 22px;
+  }
+  .stat { padding: 4px 26px 4px 0; }
+  .stat + .stat { border-inline-start: 1px solid var(--line); padding-inline-start: 26px; }
+  .stat b {
+    display: block;
+    font-family: Cairo, sans-serif; font-weight: 800; font-size: 28px;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat span { font-size: 12.5px; color: var(--muted); }
+  .stat .fresh { font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    padding: 20px 22px;
+    margin-bottom: 26px;
+  }
+  .panel h2 {
+    font-family: Cairo, sans-serif; font-weight: 800; font-size: 18px;
+    margin: 0 0 4px;
+  }
+  .panel .lede { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr 1fr;
+    gap: 12px;
+    align-items: end;
+  }
+  .form-grid .field { margin-bottom: 0; }
+  .form-msg {
+    display: none;
+    margin-top: 14px; padding: 10px 14px;
+    border-radius: var(--radius-control);
+    font-size: 13px;
+  }
+  .form-msg.ok { display: block; background: rgba(62, 207, 142, 0.12); color: var(--ok); }
+  .form-msg.err { display: block; background: var(--down-tint); color: var(--down); }
+
+  .ledger-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin: 0 2px 6px;
+  }
+  .ledger-head h2 {
+    font-family: Cairo, sans-serif; font-weight: 800; font-size: 18px; margin: 0;
+  }
+  .ledger-head .count { color: var(--faint); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .trow {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.2fr) minmax(200px, 2fr) auto auto auto;
+    gap: 14px; align-items: center;
+    padding: 15px 4px;
+    border-top: 1px solid var(--line);
+  }
+  .trow:last-child { border-bottom: 1px solid var(--line); }
+  .trow.flash { animation: flash 1.6s ease-out; }
+  @keyframes flash {
+    0% { background: var(--amber-tint); }
+    100% { background: transparent; }
+  }
+  .trow.leaving { opacity: 0; transition: opacity 0.25s ease-out; }
+  .tname { display: flex; align-items: center; gap: 11px; min-width: 0; }
+  .tname .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+  .tname .dot.on { background: var(--ok); box-shadow: 0 0 10px 2px var(--ok-glow); }
+  .tname .dot.off { background: transparent; border: 2px solid var(--amber); }
+  .tname b { font-weight: 700; font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tname small { display: block; font-weight: 400; font-size: 12px; color: var(--faint); }
+  .ttarget {
+    direction: ltr; text-align: right;
+    color: var(--muted); font-size: 13px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip {
+    font-size: 12px; color: var(--ink);
+    background: var(--chip);
+    border-radius: 999px;
+    padding: 3px 13px;
+    white-space: nowrap;
+  }
+  .tdate { color: var(--faint); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tactions { display: flex; gap: 8px; justify-content: flex-end; }
+  .mini {
+    font-family: Cairo, sans-serif; font-weight: 700; font-size: 12.5px;
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 6px 13px; cursor: pointer; white-space: nowrap;
+  }
+  .mini:hover { color: var(--ink); border-color: var(--faint); }
+  .mini.danger:hover { color: var(--down); border-color: var(--down); }
+  .mini.armed { background: var(--down); border-color: var(--down); color: #fff; }
+  .empty {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 34px 10px;
+    text-align: center; color: var(--muted);
+  }
+  .empty b { display: block; font-family: Cairo, sans-serif; font-size: 17px; color: var(--ink); margin-bottom: 4px; }
+  .empty button { margin-top: 12px; }
+  .loading { color: var(--faint); padding: 26px 4px; text-align: center; }
+
+  .toast {
+    position: fixed; bottom: 26px; inset-inline: 0;
+    display: flex; justify-content: center;
+    pointer-events: none;
+  }
+  .toast div {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-inline-start: 3px solid var(--amber);
+    border-radius: 10px;
+    padding: 11px 22px;
+    font-size: 13.5px;
+    transform: translateY(12px); opacity: 0;
+    transition: transform 0.22s ease-out, opacity 0.22s ease-out;
+    max-width: 92vw;
+  }
+  .toast.show div { transform: none; opacity: 1; }
+  .toast.err div { border-inline-start-color: var(--down); }
+
+  .foot { margin-top: 26px; color: var(--faint); font-size: 12.5px; }
+
+  @media (max-width: 760px) {
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .trow { grid-template-columns: 1fr auto; row-gap: 8px; }
+    .ttarget { grid-column: 1 / -1; order: 3; }
+    .tdate { display: none; }
+    .stat { padding: 4px 16px 4px 0; }
+    .stat + .stat { padding-inline-start: 16px; }
+    .stat b { font-size: 23px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .view-enter { animation: none; }
+    .trow.flash { animation: none; }
+    .trow.leaving { transition: none; }
+    .toast div { transition: none; }
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>🖥️ nasaq-monitoring — إدارة الخدمات المراقَبة</h1>
-  <div class="sub">كل تعديل هنا يلتقِته Prometheus تلقائياً خلال 30 ثانية — بدون restart</div>
 
-  <div class="card">
-    <div class="row">
-      <div class="field" style="flex:2">
-        <label>توكن الإدارة (TARGETS_MANAGER_TOKEN)</label>
-        <input type="password" id="token" placeholder="لصق التوكن هنا" autocomplete="off">
-      </div>
-      <button id="save-token">حفظ التوصين</button>
-      <span class="muted" id="token-state"></span>
+<!-- ══════════ البوابة ══════════ -->
+<div id="view-login" class="view" hidden>
+  <div class="gate-wrap">
+    <div class="gate">
+      <div class="gate-mark"><span class="lamp" aria-hidden="true"></span><span>nasaq مراقبة</span></div>
+      <h1 class="gate-title display">غرفة المراقبة</h1>
+      <p class="gate-sub">إدارة المواقع والخدمات الخاضعة للفحص. الدخول بمفتاح الإدارة مرة واحدة على هذا المتصفح.</p>
+      <form id="login-form" autocomplete="off">
+        <div class="field">
+          <label for="token">مفتاح الإدارة</label>
+          <div class="token-row">
+            <input class="control" type="password" id="token" placeholder="الصق المفتاح هنا" autocomplete="off" spellcheck="false">
+            <button class="icon-btn" type="button" id="token-eye" aria-label="إظهار المفتاح">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit" id="login-btn">دخول</button>
+        <div class="gate-error" id="login-error" role="alert"></div>
+      </form>
+      <p class="gate-hint">المفتاح هو TARGETS_MANAGER_TOKEN من ملف .env على السيرفر. يُحفظ على جهازك فقط ولا يُرسل لأي مكان آخر.</p>
     </div>
-  </div>
-
-  <div class="card">
-    <h2 style="font-size:15px;margin:0 0 12px">➕ إضافة خدمة جديدة</h2>
-    <div class="row">
-      <div class="field">
-        <label>اسم الخدمة (إنجليزي)</label>
-        <input id="f-service" placeholder="مثال: nasaq-site">
-      </div>
-      <div class="field" style="flex:2">
-        <label>العنوان</label>
-        <input id="f-target" placeholder="https://example.com أو host.example.com:3306 أو 8.8.8.8">
-      </div>
-      <div class="field">
-        <label>نوع الفحص</label>
-        <select id="f-module"></select>
-      </div>
-      <div class="field">
-        <label>التصنيف (اختياري)</label>
-        <input id="f-type" placeholder="website / database">
-      </div>
-      <button id="add-btn">إضافة</button>
-    </div>
-    <div id="add-msg" class="msg"></div>
-  </div>
-
-  <div class="card">
-    <h2 style="font-size:15px;margin:0 0 8px">📋 الخدمات الحالية</h2>
-    <div id="list-wrap"><div class="empty">جاري التحميل…</div></div>
-    <div id="list-msg" class="msg"></div>
   </div>
 </div>
 
+<!-- ══════════ اللوحة ══════════ -->
+<div id="view-app" class="view" hidden>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="lamp" aria-hidden="true"></span><b class="display">إدارة المراقبة</b></div>
+      <div class="spacer"></div>
+      <div class="conn"><i aria-hidden="true"></i><span>متصل بالفحص</span></div>
+      <button class="btn-ghost" id="logout-btn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        خروج
+      </button>
+    </header>
+
+    <section class="stats" aria-label="ملخص">
+      <div class="stat"><b id="stat-on">–</b><span>تُفحص الآن</span></div>
+      <div class="stat"><b id="stat-off">–</b><span>متوقفة مؤقتاً</span></div>
+      <div class="stat"><b id="stat-upd" class="fresh">–</b><span>آخر تحديث للقائمة</span></div>
+    </section>
+
+    <section class="panel" id="add-panel">
+      <h2 class="display">إضافة خدمة جديدة</h2>
+      <p class="lede">تظهر في Prometheus خلال ٣٠ ثانية من الإضافة — بدون إعادة تشغيل.</p>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-service">اسم الخدمة</label>
+          <input class="control" id="f-service" placeholder="nasaq-site" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="f-target">العنوان</label>
+          <input class="control" id="f-target" placeholder="https://example.com" dir="ltr" style="text-align:right" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="f-module">نوع الفحص</label>
+          <select class="control" id="f-module"></select>
+        </div>
+        <div class="field">
+          <label for="f-type">التصنيف (اختياري)</label>
+          <input class="control" id="f-type" placeholder="website" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn btn-primary" style="width:auto" id="add-btn" type="button">إضافة للفحص</button>
+      </div>
+      <div id="add-msg" class="form-msg" role="alert"></div>
+    </section>
+
+    <section aria-label="الخدمات">
+      <div class="ledger-head">
+        <h2 class="display">الخدمات</h2>
+        <span class="count" id="list-count"></span>
+        <div class="spacer"></div>
+        <button class="btn-ghost" id="refresh-btn" type="button">تحديث</button>
+      </div>
+      <div id="list-wrap"><div class="loading">جاري التحميل…</div></div>
+    </section>
+
+    <p class="foot">الإيقاف المؤقت يُبقي الخدمة مسجلة ويخرجها من الفحص فقط. الحذف نهائي.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" aria-live="polite"><div id="toast-text"></div></div>
+
 <script>
+"use strict";
 const $ = (id) => document.getElementById(id);
 const apiUrl = location.origin + "/api";
-
-// ── التوكن محفوظ محلياً ──
-$("token").value = localStorage.getItem("nasaq_token") || "";
-$("token-state").textContent = $("token").value ? "" : "(لن تعمل عمليات الكتابة إلا بعد إدخال التوكن)";
-$("save-token").onclick = () => {
-  localStorage.setItem("nasaq_token", $("token").value.trim());
-  $("token-state").textContent = "تم الحفظ ✓";
-  renderList();
+const TOKEN_KEY = "nasaq_token";
+const MODULE_NAMES = {
+  http_2xx: "موقع",
+  http_2xx_ssl: "موقع + شهادة",
+  tcp_connect: "منفذ",
+  icmp: "Ping"
 };
+const moduleName = (m) => MODULE_NAMES[m] || m;
 
-const authHeaders = () => ({
-  "content-type": "application/json",
-  Authorization: "Bearer " + localStorage.getItem("nasaq_token"),
+const esc = (s) => String(s == null ? "" : s)
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const getToken = () => (localStorage.getItem(TOKEN_KEY) || "").trim();
+const setToken = (t) => localStorage.setItem(TOKEN_KEY, String(t || "").trim());
+const clearToken = () => localStorage.removeItem(TOKEN_KEY);
+
+async function api(path, opts) {
+  const r = await fetch(apiUrl + path, Object.assign({
+    headers: { "content-type": "application/json", Authorization: "Bearer " + getToken() }
+  }, opts || {}));
+  let j = {};
+  try { j = await r.json(); } catch (e) { /* رد غير JSON */ }
+  return { ok: r.ok, status: r.status, data: j };
+}
+const verifyToken = () => api("/auth/verify");
+
+/* ── التنقل بين المشهدين ── */
+function show(view) {
+  const login = $("view-login"), app = $("view-app");
+  login.hidden = view !== "login";
+  app.hidden = view !== "app";
+  (view === "login" ? login : app).classList.remove("view-enter");
+  void (view === "login" ? login : app).offsetWidth;
+  (view === "login" ? login : app).classList.add("view-enter");
+}
+
+/* ── تنبيه عابر ── */
+let toastTimer = null;
+function toast(text, isErr) {
+  const box = $("toast");
+  $("toast-text").textContent = text;
+  box.classList.toggle("err", !!isErr);
+  box.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.classList.remove("show"), 4000);
+}
+function flashMsg(el, ok, text) {
+  el.className = "form-msg " + (ok ? "ok" : "err");
+  el.textContent = text;
+}
+
+/* ── الدخول ── */
+$("token-eye").onclick = () => {
+  const f = $("token");
+  const showPw = f.type === "password";
+  f.type = showPw ? "text" : "password";
+  $("token-eye").setAttribute("aria-label", showPw ? "إخفاء المفتاح" : "إظهار المفتاح");
+};
+function loginFail(text) {
+  const e = $("login-error");
+  e.textContent = text;
+  e.classList.add("show");
+}
+$("login-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = $("login-btn");
+  const v = $("token").value.trim();
+  $("login-error").classList.remove("show");
+  if (!v) { loginFail("أدخل المفتاح أولاً."); return; }
+  btn.disabled = true;
+  btn.textContent = "يتحقق…";
+  setToken(v);
+  try {
+    const r = await verifyToken();
+    if (r.ok) { enter(); }
+    else { clearToken(); loginFail("المفتاح غير صحيح — انسخه من TARGETS_MANAGER_TOKEN في .env على السيرفر."); }
+  } catch (e) {
+    clearToken();
+    loginFail("تعذر الوصول للخدمة — تأكد أن الصفحة مفتوحة عبر النفق وأن الحاوية تعمل.");
+  }
+  btn.disabled = false;
+  btn.textContent = "دخول";
 });
 
-function flash(el, ok, text) {
-  el.className = "msg " + (ok ? "ok" : "err");
-  el.textContent = text;
-  setTimeout(() => (el.className = "msg"), 6000);
-}
+/* ── الخروج ── */
+$("logout-btn").onclick = () => {
+  clearToken();
+  stopRefresh();
+  $("token").value = "";
+  show("login");
+};
 
-// ── قائمة الـ modules من الخادم ──
+/* ── اللوحة ── */
+let refreshTimer = null;
+function stopRefresh() { clearInterval(refreshTimer); refreshTimer = null; }
+function startRefresh() {
+  stopRefresh();
+  refreshTimer = setInterval(() => { if (!document.hidden) renderList(true); }, 30000);
+}
+$("refresh-btn").onclick = () => renderList(false);
+
 async function loadModules() {
-  const r = await fetch(apiUrl + "/modules");
-  const j = await r.json();
-  $("f-module").innerHTML = j.modules
-    .map((m) => `<option value="${m}">${m}</option>`)
-    .join("");
+  try {
+    const r = await fetch(apiUrl + "/modules");
+    const j = await r.json();
+    $("f-module").innerHTML = (j.modules || [])
+      .map((m) => `<option value="${esc(m)}">${esc(moduleName(m))} (${esc(m)})</option>`)
+      .join("");
+  } catch (e) { /* يُعاد المحاولة مع التحديث التالي */ }
 }
 
-// ── قائمة الخدمات ──
-async function renderList() {
+let lastAddedId = null;
+async function renderList(quiet) {
   const wrap = $("list-wrap");
   try {
     const r = await fetch(apiUrl + "/targets");
     const j = await r.json();
-    if (!j.targets.length) {
-      wrap.innerHTML = '<div class="empty">لا توجد خدمات بعد — أضف أول خدمة من الفورم أعلاه.</div>';
+    const targets = j.targets || [];
+    const on = targets.filter((t) => t.enabled).length;
+    $("stat-on").textContent = on;
+    $("stat-off").textContent = targets.length - on;
+    $("stat-upd").textContent = new Date().toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    $("list-count").textContent = targets.length ? `(${targets.length})` : "";
+    if (!targets.length) {
+      wrap.innerHTML = `<div class="empty"><b>لا توجد خدمات بعد</b>أضف أول خدمة من الأعلى لتبدأ مراقبتها.<br><button class="btn btn-primary" style="width:auto" type="button" onclick="document.getElementById('add-panel').scrollIntoView({behavior:'smooth'})">إضافة خدمة</button></div>`;
       return;
     }
-    wrap.innerHTML = `<table>
-      <thead><tr><th>الاسم</th><th>العنوان</th><th>الفحص</th><th>الحالة</th><th>أُضيفت</th><th>إجراءات</th></tr></thead>
-      <tbody>` +
-      j.targets.map((t) =>
-        `<tr>
-          <td>${t.service}</td>
-          <td><code>${t.target}</code></td>
-          <td>${t.module}</td>
-          <td><span class="badge ${t.enabled ? "on" : "off"}">${t.enabled ? "مفعّلة" : "معطّلة"}</span></td>
-          <td class="muted">${(t.created_at || "").slice(0, 10)}</td>
-          <td>
-            <button class="${t.enabled ? "warn" : "ghost"}" onclick="toggle('${t.id}', ${!t.enabled})">
-              ${t.enabled ? "تعطيل" : "تفعيل"}
-            </button>
-            <button class="danger" onclick="del('${t.id}', '${t.service}')">حذف</button>
-          </td>
-        </tr>`
-      ).join("") +
-      `</tbody></table>`;
+    wrap.innerHTML = targets.map((t) => `
+      <div class="trow${t.id === lastAddedId ? " flash" : ""}" data-id="${esc(t.id)}">
+        <div class="tname">
+          <span class="dot ${t.enabled ? "on" : "off"}" aria-hidden="true"></span>
+          <div style="min-width:0">
+            <b>${esc(t.service)}</b>
+            <small>${t.enabled ? "تُفحص" : "متوقفة"}</small>
+          </div>
+        </div>
+        <div class="ttarget" title="${esc(t.target)}">${esc(t.target)}</div>
+        <div><span class="chip" title="${esc(t.module)}">${esc(moduleName(t.module))}</span></div>
+        <div class="tdate">${esc((t.created_at || "").slice(0, 10))}</div>
+        <div class="tactions">
+          <button class="mini" type="button" data-act="toggle" data-id="${esc(t.id)}" data-en="${t.enabled ? "0" : "1"}">${t.enabled ? "إيقاف" : "تشغيل"}</button>
+          <button class="mini danger" type="button" data-act="del" data-id="${esc(t.id)}" data-name="${esc(t.service)}">حذف</button>
+        </div>
+      </div>`).join("");
+    lastAddedId = null;
   } catch (e) {
-    wrap.innerHTML = '<div class="empty">تعذر الاتصال بالخدمة</div>';
+    if (!quiet) wrap.innerHTML = '<div class="empty"><b>تعذر الاتصال بالخدمة</b>تحقق من النفق ثم اضغط تحديث.</div>';
   }
 }
 
+/* تفويض أزرار السجل */
+let armTimer = null;
+$("list-wrap").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("button[data-act]");
+  if (!b) return;
+  const id = b.getAttribute("data-id");
+  if (b.getAttribute("data-act") === "toggle") {
+    const en = b.getAttribute("data-en") === "1";
+    const r = await api("/targets/" + id, { method: "PATCH", body: JSON.stringify({ enabled: en }) });
+    if (r.ok) { toast(en ? "عادت للفحص" : "توقفت مؤقتاً"); renderList(true); }
+    else if (r.status === 401) { backToLogin(); }
+    else toast("خطأ: " + (r.data.error || "غير معروف"), true);
+    return;
+  }
+  if (b.getAttribute("data-act") === "del") {
+    if (!b.classList.contains("armed")) {
+      b.classList.add("armed");
+      b.textContent = "تأكيد الحذف؟";
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => {
+        b.classList.remove("armed");
+        b.textContent = "حذف";
+      }, 4000);
+      return;
+    }
+    clearTimeout(armTimer);
+    const row = b.closest(".trow");
+    const r = await api("/targets/" + id, { method: "DELETE" });
+    if (r.ok) {
+      if (row) {
+        row.classList.add("leaving");
+        setTimeout(() => renderList(true), 240);
+      } else renderList(true);
+      toast("حُذفت نهائياً");
+    }
+    else if (r.status === 401) { backToLogin(); }
+    else toast("خطأ: " + (r.data.error || "غير معروف"), true);
+  }
+});
+
+/* ── الإضافة ── */
 async function add() {
   const svc = $("f-service").value.trim();
   const tgt = $("f-target").value.trim();
   const mod = $("f-module").value;
-  const typ = $("f-type").value.trim();
-  const r = await fetch(apiUrl + "/targets", {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ target: tgt, service: svc, module: mod, type: typ || "website" }),
-  });
-  const j = await r.json();
-  flash($("add-msg"), r.ok, r.ok ? `تمت الإضافة ✓ (id: ${j.id}) — تظهر في بروميتاِس خلال 30 ثانية` : "خطأ: " + j.error);
-  if (r.ok) { $("f-service").value = ""; $("f-target").value = ""; $("f-type").value = ""; renderList(); }
+  const typ = $("f-type").value.trim() || "website";
+  const msg = $("add-msg");
+  if (!svc || !tgt) { flashMsg(msg, false, "اكتب اسم الخدمة والعنوان أولاً."); return; }
+  const r = await api("/targets", { method: "POST", body: JSON.stringify({ target: tgt, service: svc, module: mod, type: typ }) });
+  if (r.ok) {
+    lastAddedId = r.data.id;
+    flashMsg(msg, true, "تمت الإضافة — تظهر في Prometheus خلال ٣٠ ثانية.");
+    $("f-service").value = ""; $("f-target").value = ""; $("f-type").value = "";
+    toast("تمت الإضافة");
+    renderList(true);
+  } else if (r.status === 401) { backToLogin(); }
+  else flashMsg(msg, false, "خطأ: " + (r.data.error || "غير معروف"));
 }
 $("add-btn").onclick = add;
-["f-target", "f-service"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") add(); }));
+["f-service", "f-target"].forEach((id) =>
+  $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") add(); }));
 
-async function toggle(id, enabled) {
-  const r = await fetch(apiUrl + "/targets/" + id, {
-    method: "PATCH",
-    headers: authHeaders(),
-    body: JSON.stringify({ enabled }),
-  });
-  const j = await r.json();
-  flash($("list-msg"), r.ok, r.ok ? "تم التحديث ✓" : "خطأ: " + j.error);
-  renderList();
+function backToLogin() {
+  clearToken();
+  stopRefresh();
+  $("token").value = "";
+  loginFail("انتهت الجلسة — أدخل المفتاح مجدداً.");
+  show("login");
 }
 
-async function del(id, name) {
-  if (!confirm(`تأكيد حذف «${name}» نهائياً؟`)) return;
-  const r = await fetch(apiUrl + "/targets/" + id, { method: "DELETE", headers: authHeaders() });
-  const j = await r.json();
-  flash($("list-msg"), r.ok, r.ok ? "تم الحذف ✓" : "خطأ: " + j.error);
-  renderList();
+function enter() {
+  show("app");
+  loadModules().then(() => renderList(false));
+  startRefresh();
 }
 
-loadModules().then(renderList);
+/* ── الإقلاع ── */
+(function boot() {
+  if (getToken()) {
+    show("app");
+    $("list-wrap").innerHTML = '<div class="loading">جاري التحقق…</div>';
+    verifyToken().then((r) => {
+      if (r.ok) enter();
+      else backToLogin();
+    }).catch(() => {
+      $("list-wrap").innerHTML = '<div class="empty"><b>تعذر الاتصال بالخدمة</b>تحقق من النفق ثم أعد تحميل الصفحة.</div>';
+    });
+  } else {
+    show("login");
+  }
+})();
 </script>
 </body>
 </html>
