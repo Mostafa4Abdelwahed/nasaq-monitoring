@@ -48,10 +48,13 @@ groups:
           description: "{{ printf \"%.1f\" $value }}% of inodes remain on {{ $labels.mountpoint }} — new file creation may fail."
           dashboard_url: "http://localhost:3000/d/nasaq-disk"
 
-      # ───────── انشغال القرص العالي ─────────
+      # ───────── انشغال القرص العالي (queue pressure فعلية فقط — لا يطلق على TRIM/ضوضاء خلفية) ─────────
       - alert: HighDiskIO
-        expr: rate(node_disk_io_time_seconds_total{job="node-exporter"}[5m]) * 100 > 90
-        for: 10m
+        expr: |
+          (avg_over_time(rate(node_disk_io_time_seconds_total{job="node-exporter"}[5m])[15m:1m]) * 100 > 90)
+          and
+          (avg_over_time(rate(node_disk_io_time_weighted_seconds_total{job="node-exporter"}[5m])[15m:1m]) > 3)
+        for: 15m
         labels:
           severity: warning
         annotations:
